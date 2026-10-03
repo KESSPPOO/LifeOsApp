@@ -70,6 +70,9 @@ export function ShellLayout({ state, navigation, children }) {
                   key={n.id}
                   onPress={() => { navigation.navigate(n.id); closeDrawer(); }}
                   style={[styles.drawerItem, current === n.id && styles.drawerItemActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={n.label}
+                  accessibilityState={{ selected: current === n.id }}
                 >
                   <Text style={{ fontSize: 18 }}>{n.icon}</Text>
                   <Text style={[styles.drawerLabel, current === n.id && styles.drawerLabelActive]}>

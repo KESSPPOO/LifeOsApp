@@ -6,7 +6,12 @@ import { COLORS } from '../config/colors';
 export function HeaderBar({ title, onMenuPress }) {
   return (
     <View style={styles.bar}>
-      <TouchableOpacity onPress={onMenuPress} style={styles.menuBtn}>
+      <TouchableOpacity
+        onPress={onMenuPress}
+        style={styles.menuBtn}
+        accessibilityRole="button"
+        accessibilityLabel="Open menu"
+      >
         <Text style={styles.menuIcon}>☰</Text>
       </TouchableOpacity>
       <Text style={styles.logo}>

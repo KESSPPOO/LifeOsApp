@@ -21,7 +21,12 @@ export function BottomNav({ state, navigation }) {
     if (!navScalesRef.current[id]) navScalesRef.current[id] = new Animated.Value(1);
     return navScalesRef.current[id];
   };
+  // The old shell ran this effect while the loading view still hid the bar,
+  // so the first "pop" was never seen. Skip it here too: only screen changes
+  // pop the icon.
+  const mountedRef = useRef(false);
   useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
     const scale = getNavScale(current);
     scale.setValue(1);
     Animated.sequence([
@@ -40,6 +45,9 @@ export function BottomNav({ state, navigation }) {
           key={n.id}
           onPress={() => navigation.navigate(n.id)}
           style={styles.bottomNavItem}
+          accessibilityRole="tab"
+          accessibilityLabel={n.label}
+          accessibilityState={{ selected: current === n.id }}
         >
           <View style={[styles.bottomNavIconWrap, current === n.id && styles.bottomNavIconWrapActive]}>
             <Animated.Text

@@ -238,9 +238,12 @@ Shell behaviour:
   modules (`react-native-gesture-handler`, `react-native-reanimated`), need a
   rebuilt dev client, and change the drawer's look and gestures. The existing
   `Modal` drawer is kept and just calls `navigation.navigate`.
-- **No new dependencies.** `@react-navigation/native` and `bottom-tabs` (v7)
-  were already in `package.json`; `react-native-screens` and
-  `react-native-safe-area-context` were already installed.
+- **No new runtime dependencies.** `@react-navigation/native` and
+  `bottom-tabs` (v7) were already in `package.json`; `react-native-screens`
+  and `react-native-safe-area-context` were already installed. The only
+  `package.json` change is declaring `@react-navigation/routers` (already
+  installed by `bottom-tabs`) as a devDependency, because the navigation
+  tests drive its `TabRouter`.
 - **Route names** are the existing ids in `src/config/nav.js`, the single
   source for name, label, icon and bottom-bar membership. They are not
   renamed (`journal` stays).
