@@ -1,14 +1,9 @@
 // App.js — LifeOS root component
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, TouchableOpacity,
-  ScrollView, StatusBar, Modal, StyleSheet, Platform,
-  Animated, Easing, BackHandler,
-} from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { COLORS } from './src/config/colors';
-import { NAV } from './src/config/nav';
 import { todayKey } from './src/data/helpers';
 import { saveJSON } from './src/data/storage';
 import { appStorage, runMigrations, KEYS } from './src/core/storage';
@@ -18,7 +13,7 @@ import { hydrateGoals } from './src/features/goals/store';
 import { hydrateNotes } from './src/features/notes/store';
 import { hydrateLinks } from './src/features/links/store';
 import { ErrorBoundary } from './src/app/ErrorBoundary';
-import { FadeSlideIn } from './src/components/FadeSlideIn';
+import { AppNavigator } from './src/app/navigation/AppNavigator';
 import {
   INIT_EXAMS, INIT_FINANCES,
 } from './src/data/seedData';
@@ -31,19 +26,9 @@ import {
   GoogleOneTapSignIn, isSuccessResponse, isNoSavedCredentialFoundResponse,
 } from 'react-native-nitro-google-signin';
 
-// Screens
+// Onboarding is a gate in front of the navigator; every other screen is a
+// route in src/app/navigation/AppNavigator.js.
 import OnboardingScreen from './src/screens/OnboardingScreen';
-import HomeScreen       from './src/screens/HomeScreen';
-import UniScreen        from './src/screens/UniScreen';
-import FinancesScreen   from './src/screens/FinancesScreen';
-import StatsScreen      from './src/screens/StatsScreen';
-import GroceriesScreen  from './src/screens/GroceriesScreen';
-import GoalsScreen      from './src/screens/GoalsScreen';
-import NotesScreen      from './src/screens/NotesScreen';
-import LinksScreen      from './src/screens/LinksScreen';
-import JournalScreen    from './src/screens/JournalScreen';
-
-const DRAWER_WIDTH = 240;
 
 function usePersist(key, setter) {
   return (valOrFn) => {
@@ -74,10 +59,6 @@ export default function App() {
 }
 
 function AppContent() {
-  // insets.top  = status bar height (Android) / notch (iOS)
-  // insets.bottom = system nav bar height (Android 3-button/gesture) / home indicator (iOS)
-  const insets = useSafeAreaInsets();
-
   const [authUser, setAuthUser] = useState(null);
 
   // Native library configuration — once only, not on every render.
@@ -103,7 +84,6 @@ function AppContent() {
     return unsub;
   }, []);
 
-  const [screen, setScreen]         = useState('home');
   const [ready, setReady]           = useState(false);
   // Set if boot fails. Rethrown during render so the root ErrorBoundary shows
   // its retry screen (retry remounts and re-runs boot) instead of the app
@@ -129,50 +109,6 @@ function AppContent() {
   const [timerSec,      setTimerSec]      = useState(0);
   const [timerSubject,  setTimerSubject]  = useState('');
   const timerRef = useRef(null);
-
-  const [drawerMounted, setDrawerMounted] = useState(false);
-  const drawerX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-
-  const openDrawer = () => {
-    setDrawerMounted(true);
-    drawerX.setValue(-DRAWER_WIDTH);
-    requestAnimationFrame(() => {
-      Animated.timing(drawerX, {
-        toValue: 0, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true,
-      }).start();
-    });
-  };
-  const closeDrawer = () => {
-    Animated.timing(drawerX, {
-      toValue: -DRAWER_WIDTH, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true,
-    }).start(() => setDrawerMounted(false));
-  };
-
-  const screenHistoryRef = useRef([]);
-
-  const goToScreen = (id) => {
-    if (id === screen) return;
-    screenHistoryRef.current.push(screen);
-    setScreen(id);
-  };
-
-  useEffect(() => {
-    const onBackPress = () => {
-      if (drawerMounted) {
-        closeDrawer();
-        return true;
-      }
-      if (screenHistoryRef.current.length > 0) {
-        const prev = screenHistoryRef.current.pop();
-        setScreen(prev);
-        return true;
-      }
-      return false;
-    };
-    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerMounted]);
 
   // Boot: bring stored data up to the current schema version first (see
   // src/core/storage/migrations.js; this absorbed the old inline
@@ -327,23 +263,6 @@ function AppContent() {
     onTimerSubject: setTimerSubject,
   };
 
-  const navigateTo = (screenId) => goToScreen(screenId);
-
-  const navScalesRef = useRef({});
-  const getNavScale = (id) => {
-    if (!navScalesRef.current[id]) navScalesRef.current[id] = new Animated.Value(1);
-    return navScalesRef.current[id];
-  };
-  useEffect(() => {
-    const scale = getNavScale(screen);
-    scale.setValue(1);
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 1.25, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 8 }),
-    ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen]);
-
   if (bootError) throw bootError;
 
   if (!ready) {
@@ -366,194 +285,21 @@ function AppContent() {
     );
   }
 
-  const SCREENS = {
-    home: (
-      <HomeScreen
-        exams={exams}
-        finances={finances} heatmap={heatmap}
-        userName={userName} course={course} isFirstUse={isFirstUse}
-        tipsShown={tipsShown} onDismissTip={dismissTip}
-        onNavigate={navigateTo}
-        {...timerProps}
-      />
-    ),
-    uni:       <UniScreen       exams={exams}         setExams={pExams} totalCredits={totalCredits} />,
-    finances:  <FinancesScreen  finances={finances}   setFinances={pFinances}  />,
-    groceries: <GroceriesScreen />,
-    goals:     <GoalsScreen />,
-    notes:     <NotesScreen />,
-    links:     <LinksScreen />,
-    journal:   <JournalScreen />,
-    stats:     <StatsScreen
-                 exams={exams} heatmap={heatmap}
-                 finances={finances}
-                 loggedSeconds={loggedSeconds + timerSec}
-               />,
+  // TEMPORARY wiring (ADR-004): the four screens that still need data held
+  // here get it through the navigator, keyed by route name. Remove each entry
+  // when its domain moves to a feature store. Navigation itself is no longer
+  // a prop: screens use useNavigation().
+  const legacyProps = {
+    home: {
+      exams, finances, heatmap,
+      userName, course, isFirstUse,
+      tipsShown, onDismissTip: dismissTip,
+      ...timerProps,
+    },
+    uni:      { exams, setExams: pExams, totalCredits },
+    finances: { finances, setFinances: pFinances },
+    stats:    { exams, heatmap, finances, loggedSeconds: loggedSeconds + timerSec },
   };
 
-  const bottomNavItems = NAV.filter((n) => n.bottomNav);
-  const currentNav     = NAV.find((n) => n.id === screen);
-
-  return (
-    // Plain View instead of SafeAreaView: we manage insets explicitly via
-    // useSafeAreaInsets so we can apply them per-region (top bar, bottom
-    // nav, drawer header) rather than padding the entire root uniformly.
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
-
-      {/* ── Top Bar ── */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuBtn}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </TouchableOpacity>
-        <Text style={styles.logo}>
-          <Text style={{ color: COLORS.accent }}>Life</Text>OS
-        </Text>
-        <Text style={styles.screenLabel}>
-          {currentNav?.icon} {currentNav?.label}
-        </Text>
-      </View>
-
-      {/* ── Drawer ── */}
-      <Modal visible={drawerMounted} animationType="none" transparent onRequestClose={closeDrawer}>
-        <View style={styles.drawerOverlay}>
-          <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerX }] }]}>
-            {/* paddingTop uses insets.top (replaces the old StatusBar.currentHeight
-                hack) so the header clears the status bar on all devices/platforms. */}
-            <View style={[styles.drawerHeader, { paddingTop: 16 + insets.top }]}>
-              <Text style={styles.logo}>
-                <Text style={{ color: COLORS.accent }}>Life</Text>OS
-              </Text>
-              <Text style={styles.drawerSubtitle}>Personal Life OS</Text>
-            </View>
-            <ScrollView>
-              {NAV.map((n) => (
-                <TouchableOpacity
-                  key={n.id}
-                  onPress={() => { goToScreen(n.id); closeDrawer(); }}
-                  style={[styles.drawerItem, screen === n.id && styles.drawerItemActive]}
-                >
-                  <Text style={{ fontSize: 18 }}>{n.icon}</Text>
-                  <Text style={[styles.drawerLabel, screen === n.id && styles.drawerLabelActive]}>
-                    {n.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Animated.View>
-          <TouchableOpacity style={{ flex: 1 }} onPress={closeDrawer} />
-        </View>
-      </Modal>
-
-      {/* ── Main Content ── */}
-      <View style={styles.content}>
-        <FadeSlideIn key={screen} style={{ flex: 1 }}>
-          {SCREENS[screen]}
-        </FadeSlideIn>
-      </View>
-
-      {/* ── Bottom Nav ──
-          paddingBottom = insets.bottom (system nav bar / home indicator) + 8
-          base visual padding. Without this, on Android with 3-button nav
-          (e.g. Galaxy A34) the tab strip renders behind the system buttons. */}
-      <View style={[styles.bottomNav, { paddingBottom: insets.bottom + 8 }]}>
-        {bottomNavItems.map((n) => (
-          <TouchableOpacity
-            key={n.id}
-            onPress={() => goToScreen(n.id)}
-            style={styles.bottomNavItem}
-          >
-            <View style={[styles.bottomNavIconWrap, screen === n.id && styles.bottomNavIconWrapActive]}>
-              <Animated.Text
-                style={[
-                  styles.bottomNavIcon,
-                  screen === n.id && styles.bottomNavIconActive,
-                  { transform: [{ scale: getNavScale(n.id) }] },
-                ]}
-              >
-                {n.icon}
-              </Animated.Text>
-            </View>
-            <Text style={[styles.bottomNavLabel, screen === n.id && styles.bottomNavLabelActive]}>
-              {n.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+  return <AppNavigator legacyProps={legacyProps} />;
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-    // paddingTop removed — applied inline as insets.top so it adapts to
-    // every device (Android status bar, iOS notch/dynamic island, etc.)
-    // instead of relying on the platform-conditional StatusBar.currentHeight.
-  },
-  topBar: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, height: 52,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.bg,
-  },
-  menuBtn: { padding: 8 },
-  menuIcon: { fontSize: 20, color: COLORS.textMuted },
-  logo: { fontSize: 15, fontWeight: 'bold', color: COLORS.text },
-  screenLabel: { fontSize: 13, color: COLORS.textMuted },
-
-  drawerOverlay: {
-    flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  drawer: {
-    width: DRAWER_WIDTH,
-    height: '100%',
-    backgroundColor: COLORS.bg2,
-    borderRightWidth: 1, borderRightColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 16,
-  },
-  drawerHeader: {
-    padding: 16,
-    // paddingTop removed — applied inline as 16 + insets.top so the
-    // drawer header clears the status bar on both platforms without the
-    // old iOS/Android conditional and the undefined-on-iOS caveat.
-    borderBottomWidth: 1, borderBottomColor: COLORS.border, marginBottom: 8,
-  },
-  drawerSubtitle: { fontSize: 11, color: COLORS.textSub, marginTop: 2 },
-  drawerItem: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 16,
-    borderLeftWidth: 2, borderLeftColor: 'transparent',
-  },
-  drawerItemActive: { backgroundColor: COLORS.accentGlow, borderLeftColor: COLORS.accent },
-  drawerLabel:      { fontSize: 14, color: COLORS.textMuted, marginLeft: 14 },
-  drawerLabelActive:{ color: COLORS.accent, fontWeight: '600' },
-
-  content: { flex: 1 },
-
-  bottomNav: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    paddingTop: 8,
-    // paddingBottom removed — applied inline as insets.bottom + 8 so the
-    // tab strip never hides under Android's 3-button or gesture bar.
-    borderTopWidth: 1, borderTopColor: COLORS.border,
-    backgroundColor: COLORS.bg2,
-  },
-  bottomNavItem: { alignItems: 'center', flex: 1 },
-  bottomNavIconWrap: {
-    width: 36, height: 28, alignItems: 'center', justifyContent: 'center',
-    borderRadius: 10,
-  },
-  bottomNavIconWrapActive: {
-    backgroundColor: COLORS.accentGlow,
-  },
-  bottomNavIcon: { fontSize: 20, opacity: 0.35 },
-  bottomNavIconActive: { opacity: 1 },
-  bottomNavLabel: { fontSize: 10, color: COLORS.textSub, marginTop: 4 },
-  bottomNavLabelActive: { color: COLORS.accent, fontWeight: '600' },
-});

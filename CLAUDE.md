@@ -28,7 +28,7 @@ prototype.**
 |---|---|
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
-| Navigation | Hand-rolled `useState` screen switcher plus a custom drawer in `App.js`. `@react-navigation/*` is installed but **not used yet** |
+| Navigation | React Navigation 7 (ADR-004): one bottom-tab navigator (`src/app/navigation/AppNavigator.js`) reproducing the existing shell. The custom top bar and `Modal` drawer are its `layout` (`ShellLayout`), the custom bottom bar is its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Route names, labels and icons live in `src/config/nav.js`. This is **not** the final LifeOS navigation |
 | State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
@@ -40,13 +40,15 @@ prototype.**
 ## Repository structure
 
 ```
-App.js                 Root shell: boot (migrations, then parallel load), state for not-yet-migrated sections, drawer, bottom nav, screen switcher
+App.js                 Root: boot (migrations, then parallel load), auth, onboarding gate, state for not-yet-migrated sections; renders AppNavigator
 app.config.js          The ONLY Expo config (there is deliberately no app.json)
 metro.config.js        Disables package "exports" resolution (needed by firebase/auth)
 eas.json               EAS build profiles
 eslint.config.js       Expo ESLint config
 src/
   app/                 App-shell pieces: ErrorBoundary (root fallback, Danish)
+  app/navigation/      AppNavigator (NavigationContainer + tab navigator), ShellLayout
+                       (top bar + drawer), BottomNav (bottom bar)
   core/storage/        Versioned persistence: engine.js (adapter-agnostic, never throws),
                        keys.js (documented key registry), migrations.js (SCHEMA_VERSION +
                        ordered migrations), index.js (appStorage = engine over AsyncStorage)
@@ -60,7 +62,8 @@ src/
   features/notes/      store.js + logic.js (add/edit/delete, tag collection)
   features/links/      store.js + logic.js (add/edit/delete, star limit, URL
                        normalisation); also read by HomeScreen (Quick Links)
-  config/              colors.js (theme tokens), nav.js (screen registry), firebase.js
+  config/              colors.js (theme tokens), nav.js (routes: names, labels, icons,
+                       bottom-bar membership, initial route, back behaviour), firebase.js
   data/                Pure logic and persistence; no React in here
     helpers.js         Dates (localDateKey!), grade math, formatting
     tasks.js           Task/habit grouping and streaks (unit-tested)
@@ -142,8 +145,13 @@ Things that are easy to get wrong:
 - Put new LifeOS modules in `src/features/<module>/` (`screens/`,
   `components/`, and a pure `logic.js` or `model.js`). Existing screens stay
   in `src/screens/` until a planned session moves them.
-- Register screens in `src/config/nav.js` (and the `SCREENS` map in `App.js`,
-  until React Navigation is adopted).
+- Register a screen by adding its route to `NAV` in `src/config/nav.js` and
+  one `<Tab.Screen name=…>` in `src/app/navigation/AppNavigator.js`
+  (`tests/navigation.test.mjs` checks that the two match). Navigate with
+  `useNavigation().navigate('<route>')`, never with callbacks passed down
+  from `App.js`. The tab navigator is the CURRENT shell; nested stacks or a
+  new structure are a deliberate design decision, not something to add on
+  the side.
 - Pure logic gets tests in `tests/<name>.test.mjs`, which `npm test` discovers
   automatically. Make them deterministic: pass dates in, never read the
   clock inside the logic under test. A module imported by a test must import
@@ -231,6 +239,9 @@ Things that are easy to get wrong:
 - `metro.config.js` disables package `exports` resolution. A new dependency
   must resolve through its root files or `main` (check with
   `npm run check:bundle`); `zustand` and `zustand/vanilla` do.
+- Every route stays mounted only while focused (`screenLayout` in
+  `AppNavigator`), as the old switcher did: leaving a screen resets its local
+  state. Keep it that way unless the design changes.
 - Feature stores are module singletons: they survive `ErrorBoundary` retries
   and are re-created by Fast Refresh when their file is edited (dev only;
   reload the app after editing store files).

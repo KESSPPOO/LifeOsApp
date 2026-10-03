@@ -66,7 +66,7 @@ This session fixed it (see § 12).
 | Study timer and heatmap | `App.js` only | **REMOVE LATER** | Dead code: no UI calls the timer since upstream v1.0. `heatmap` and `loggedSeconds` are still read by Home and Stats. Remove together with the "Study Days" stats. |
 | Pre-seeded demo data | `seedData.js` | **REPLACE LATER** | Italian-student content. LifeOS should start empty (calm first run), with demo data at most as an explicit option. |
 | "Clear All" on every list screen | all list screens | **KEEP** | |
-| Drawer and bottom navigation, Android back history | `App.js`, `nav.js` | **REPLACE LATER** | Replace with React Navigation (already installed); see § 4. |
+| Drawer and bottom navigation, Android back history | `src/app/navigation/`, `nav.js` | **KEEP** (structure is a later design decision) | Session 5: now runs on React Navigation (ADR-004) with the same visible behaviour; Back walks the full history. |
 
 ### Reusable shared components
 
@@ -115,7 +115,10 @@ Ordered roughly by how much it blocks LifeOS.
    tips, exams, finances, study-timer data, navigation, Firebase.
 2. **No real navigation:** the custom switcher cannot do nested stacks, deep
    links or per-tab history. Back handling is a hand-rolled history array, and
-   the drawer is a `Modal`. React Navigation is installed but unused.
+   the drawer is a `Modal`. React Navigation is installed but unused. *Session 5:* replaced by React
+   Navigation (ADR-004), reproducing the same shell; nested stacks and deep
+   links are now possible. The product navigation structure is still the old
+   one and needs a design decision.
 3. **Screens mix UI, form state and domain rules** in 200–600-line files.
    Only tasks logic has been extracted so far.
 4. **Persistence model:** one JSON blob per collection, rewritten in full on
@@ -490,7 +493,7 @@ the same recipe: the remaining collections, one per change (see Session 2b below
   Links, Finances, Exams, profile) in small follow-ups. *Goals, Notes and
   Links: done in Session 4.*
 
-### Session 3: Navigation (React Navigation)
+### Session 3: Navigation (React Navigation) — DONE as infrastructure (Session 5, ADR-004; same structure, not the final LifeOS navigation)
 - **Objective:** replace the `useState` switcher and custom drawer with React
   Navigation, keeping every screen.
 - **Scope:** `NavigationContainer`, bottom tabs (I dag/Home, Tasks, Finances
@@ -541,3 +544,4 @@ the same recipe: the remaining collections, one per change (see Session 2b below
 | 2 (2026-10-03) | Versioned storage in `src/core/storage` (engine over injectable adapter, never throws, corrupt values backed up to `lifeos_corrupt_<key>`, read errors distinct from missing; documented key registry; `schemaVersion` + migration runner). Migration 1 absorbs the old inline `habitsMigrated` block (same result; atomic write, duplicate guard, aborts on unreadable data). Tasks + habits moved to a Zustand store (`src/features/tasks`, ADR-001); `App.js` no longer holds `journal`; Journal/Home/Stats read via hooks; on-disk format unchanged. Boot runs migrations then loads in parallel. Root `ErrorBoundary` (Danish fallback). ESLint via `expo lint` added to `validate`. New dependency: `zustand`. 54 tests. Behaviour change only for damaged data: a corrupt/unreadable journal shows empty instead of demo data. |
 | 3 (2026-10-03) | Shared `createPersistedListStore` (`src/core/state/`, ADR-003) holds all list-store data safety; tasks/habits moved onto it (behaviour unchanged; `journalStore.js` removed). **Groceries migrated** (second module): `src/features/groceries/` (store + pure `logic.js`), `GroceriesScreen` reads via hooks, `App.js` no longer holds groceries, `lifeos_groceries` format unchanged. Safety suite runs per module. ADR-003 documents the migration template. Overlapping hydrations share one read; a failed boot shows the ErrorBoundary retry screen instead of an endless loading view. Behaviour change for damaged data only: corrupt/unreadable groceries show an empty list instead of the demo list, and unreadable grocery data is never overwritten (same rule as tasks). 79 tests. |
 | 4 (2026-10-03) | **Goals, Notes and Links migrated** with the ADR-003 template, one commit each; `persistedListStore.js` unchanged. Each got `src/features/<module>/store.js` + a pure `logic.js` (clock and generated ids passed in). `HomeScreen` reads links via `useLinks` + `starredLinks`. `App.js` no longer holds any list module. Stored keys and formats unchanged and never rewritten on load; damaged data for these modules now follows the shared safety rules (corrupt -> backed up, empty list; unreadable -> never overwritten). `isGoalExpired` returns a real boolean (the old inline `''` was rendered as a bare string in a View). Safety suite runs for all five list modules. 143 tests. |
+| 5 (2026-10-03) | **Navigation infrastructure migrated to React Navigation 7** (ADR-004), same visible behaviour: one bottom-tab navigator over the nine existing routes; the existing top bar + Modal drawer (`ShellLayout`, navigator `layout`) and bottom bar (`BottomNav`, `tabBar`) moved out of `App.js` unchanged; `backBehavior: 'fullHistory'` replaces the manual history + `BackHandler`; screens mount only while focused (as before) with the same entrance animation; Home links use `useNavigation()`; onboarding stays a gate. No new dependencies; no storage/store changes. Temporary `legacyProps` wiring for Home/Uni/Finances/Stats. `App.js` 559 -> ~305 lines. 154 tests (TabRouter-based Back tests, route-name source checks). |

@@ -176,3 +176,84 @@ one forgotten guard overwrites user data.
    operations (pure, and through the store).
 8. **Remove it from `App.js`:** the `useState`, the `loadMany` entry, the
    `usePersist` setter, the props, and the now-unused seed import.
+
+---
+
+## ADR-004: React Navigation reproduces the existing shell (no redesign)
+
+- **Status:** accepted (Session 5, 2026-10-03)
+
+### Context: navigation before this change
+`App.js` switched screens by hand: `screen` state, a `SCREENS` map of
+JSX, a manual history array and a `BackHandler`. Inventory of the existing
+behaviour, which the migration must keep:
+
+| Route id | Screen | Reached via | Props from `App.js` | Notes |
+|---|---|---|---|---|
+| `home` | HomeScreen | start screen; bottom bar; drawer | exams, finances, heatmap, userName, course, isFirstUse, tipsShown, onDismissTip, timer props (unused), `onNavigate` | links to `uni` (Next Target header and card), `journal` (Tasks header, "+N more"), `links` (Quick Links header) |
+| `uni` | UniScreen | bottom bar; drawer; Home | exams, setExams, totalCredits | |
+| `journal` | JournalScreen ("Tasks") | bottom bar; drawer; Home | none (tasks store) | |
+| `finances` | FinancesScreen | bottom bar; drawer | finances, setFinances | |
+| `stats` | StatsScreen | bottom bar; drawer | exams, heatmap, finances, loggedSeconds | |
+| `groceries` | GroceriesScreen | drawer | none | |
+| `goals` | GoalsScreen | drawer | none | |
+| `notes` | NotesScreen | drawer | none | |
+| `links` | LinksScreen | drawer; Home | none | |
+
+Shell behaviour:
+- **Persistent chrome:** a top bar (☰, logo, the current screen's icon and
+  label), a bottom bar with the five `bottomNav` items (current one
+  highlighted, icon "pop" when the screen changes), and a custom animated
+  drawer (a `Modal`) listing every route with the current one highlighted.
+  Safe-area insets go on the root top padding, the drawer header and the
+  bottom bar.
+- **Switching:** only the current screen is mounted. Every visit mounts it
+  fresh (local state such as filters or open forms resets) and plays the
+  `FadeSlideIn` entrance. Choosing the current screen again does nothing.
+- **Android Back:** if the drawer is open, it closes. Otherwise Back returns
+  to the previously shown screen, walking back through every switch
+  (including duplicates). With no history left, the app exits. Modals inside
+  screens close themselves first (`onRequestClose`).
+- **Onboarding:** a gate. Until it completes, only `OnboardingScreen` renders,
+  with no chrome.
+
+### Decision
+- **One bottom-tab navigator** (`@react-navigation/bottom-tabs`, already
+  installed) holds all nine routes as siblings. This is the structure the app
+  already has: a flat set of screens with a bottom bar. It is not a decision
+  about the future LifeOS information architecture.
+  - `backBehavior: 'fullHistory'` reproduces the old manual history
+    exactly: every switch is recorded, duplicates included, and Back pops
+    it. Re-selecting the current route records nothing.
+  - A custom `tabBar` renders the existing bottom bar for the routes marked
+    `bottomNav` in `src/config/nav.js`. The other four routes are reachable
+    from the drawer only, as before.
+  - The navigator `layout` renders the existing top bar and drawer around the
+    navigator, with access to its state. They are not per-screen headers
+    (`headerShown: false`).
+  - `screenLayout` mounts a screen only while it is focused and wraps it in
+    `FadeSlideIn`, so each visit still starts fresh with the same entrance.
+    React Navigation 7 has no `unmountOnBlur`.
+- **No drawer navigator.** `@react-navigation/drawer` would add two native
+  modules (`react-native-gesture-handler`, `react-native-reanimated`), need a
+  rebuilt dev client, and change the drawer's look and gestures. The existing
+  `Modal` drawer is kept and just calls `navigation.navigate`.
+- **No new dependencies.** `@react-navigation/native` and `bottom-tabs` (v7)
+  were already in `package.json`; `react-native-screens` and
+  `react-native-safe-area-context` were already installed.
+- **Route names** are the existing ids in `src/config/nav.js`, the single
+  source for name, label, icon and bottom-bar membership. They are not
+  renamed (`journal` stays).
+- **Onboarding** stays a gate outside the `NavigationContainer`.
+- **Data still owned by `App.js`** (profile, exams, finances, tips, timer) is
+  passed to the four screens that need it through `Tab.Screen` render
+  callbacks. This is temporary wiring, removed when those domains migrate.
+  No new global state is introduced for it.
+
+### Consequences
+- `App.js` no longer has screen state, history or a `BackHandler`. Screens
+  navigate with `useNavigation()` instead of an `onNavigate` prop.
+- Nested stacks inside a route, and deep linking (`linking` on
+  `NavigationContainer`), can be added later without another shell rewrite.
+- Unchanged: drawer gestures (none before), visuals, which screens are in the
+  bottom bar, and storage and stores.

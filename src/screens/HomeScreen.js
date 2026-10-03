@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../config/colors';
 import { Card } from '../components/Card';
 import { Pill } from '../components/Pill';
@@ -51,7 +52,6 @@ function SectionHeader({ title, onPress }) {
 export default function HomeScreen({
   exams, finances, heatmap,
   userName, course, isFirstUse, tipsShown, onDismissTip,
-  onNavigate,
 }) {
   // Tasks + habits are read from the tasks store, not passed by App.js.
   const tasks = useJournal();
@@ -95,9 +95,9 @@ export default function HomeScreen({
   // ── Onboarding Tips Logic ──
   const tipToShow = isFirstUse ? TIPS.find(t => !tipsShown.includes(t.id)) : null;
 
-  const go = (screenId) => {
-    if (onNavigate) onNavigate(screenId);
-  };
+  // Links to other screens (route names from src/config/nav.js).
+  const navigation = useNavigation();
+  const go = (screenId) => navigation.navigate(screenId);
 
   // ── Section reorder state ──
   // The Home page's section blocks (not their inner items — those are
