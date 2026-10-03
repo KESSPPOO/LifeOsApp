@@ -7,16 +7,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runMigrations } from '../src/core/storage/migrations.js';
 import { groupJournal, toggleJournalEntry } from '../src/data/tasks.js';
-import { TODAY, LEGACY_JOURNAL, LEGACY_HABITS, parsed, quietLogger, setupListStore } from './fixtures.mjs';
+import { KEYS } from '../src/core/storage/keys.js';
+import {
+  TODAY, LEGACY_JOURNAL, LEGACY_HABITS, JOURNAL_TEST_SEED, parsed, quietLogger, setupListStore,
+} from './fixtures.mjs';
 
-const SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
-
-const setup = (values = {}) => setupListStore({ key: 'journal', values, seed: SEED });
+const setup = (values = {}) => setupListStore({ key: KEYS.journal, values, seed: JOURNAL_TEST_SEED });
 const storedJournal = (adapter) => parsed(adapter, 'journal');
 
 test('pre-v1.4 install: migrate, then hydrate, shows tasks and the old habits', async () => {
   const { store, storage } = setup({ journal: LEGACY_JOURNAL, habits: LEGACY_HABITS });
-  await runMigrations(storage, { seedJournal: SEED }, { logger: quietLogger() });
+  await runMigrations(storage, { seedJournal: JOURNAL_TEST_SEED }, { logger: quietLogger() });
   await store.getState().hydrate();
   const habits = store.getState().items.filter(t => t.recurring).map(t => t.text);
   assert.deepEqual(habits, ['Reading', 'Meditation', 'Water']);

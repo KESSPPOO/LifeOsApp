@@ -1,7 +1,7 @@
 // Shared fixtures: stored data exactly as builds before versioned storage
 // wrote it (raw AsyncStorage strings under the 'lifeos_' prefix).
 // Deterministic dates: TODAY is fixed.
-import { STORAGE_PREFIX } from '../src/core/storage/keys.js';
+import { STORAGE_PREFIX, corruptBackupKey } from '../src/core/storage/keys.js';
 import { createStorage } from '../src/core/storage/engine.js';
 import { createPersistedListStore } from '../src/core/state/persistedListStore.js';
 
@@ -29,6 +29,11 @@ export const LEGACY_GROCERIES = [
   { id: 1, text: 'Fødselsdagskort', category: 'other', done: false },
 ];
 
+// Demo lists the stores fall back to when a key is missing (test stand-ins
+// for INIT_JOURNAL / INIT_GROCERIES, which tests cannot import).
+export const JOURNAL_TEST_SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
+export const GROCERIES_TEST_SEED = [{ id: 900, text: 'demo item', category: 'other', done: false }];
+
 // The pre-v1.4 separate habits list, migrated into journal by migration 1.
 export const LEGACY_HABITS = [
   { id: 1, name: 'Meditation', icon: '🧘', history: { '2026-03-01': 1 }, streak: 1 },
@@ -47,6 +52,11 @@ export function rawStore(values) {
 /** Parsed stored value of `key` in a memory adapter. */
 export function parsed(adapter, key) {
   return JSON.parse(adapter.data[STORAGE_PREFIX + key]);
+}
+
+/** Raw stored string of `key` (or of its corrupt backup) in a memory adapter. */
+export function raw(adapter, key, { backup = false } = {}) {
+  return adapter.data[STORAGE_PREFIX + (backup ? corruptBackupKey(key) : key)];
 }
 
 /** In-memory adapter with AsyncStorage's method shapes; `data` holds raw strings. */
@@ -75,6 +85,15 @@ export function failReadsOf(adapter, key, times = Infinity) {
   adapter.multiGet = async (keys) => {
     if (keys.includes(full) && fail()) throw new Error('io error in multiGet');
     return multiGet(keys);
+  };
+}
+
+/** Makes setItem fail for keys containing `match` (e.g. 'corrupt_'). */
+export function failWritesOf(adapter, match) {
+  const setItem = adapter.setItem;
+  adapter.setItem = async (k, v) => {
+    if (k.includes(match)) throw new Error(`write failed: ${k}`);
+    return setItem(k, v);
   };
 }
 

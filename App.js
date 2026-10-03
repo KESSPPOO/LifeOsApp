@@ -114,9 +114,8 @@ function AppContent() {
   const [finances,     setFinances]     = useState([]);
   const [goals,        setGoals]        = useState([]);
   const [notes,        setNotes]        = useState([]);
-  // Migrated modules are NOT held here any more: tasks + habits (`journal`)
-  // and groceries live in stores under src/features/ and screens read them
-  // via hooks (useJournal, useGroceries).
+  // Migrated modules (src/features/*) are NOT held here: each owns a store
+  // that screens read via hooks (ADR-003).
   const [links,        setLinks]        = useState([]);
   const [heatmap,      setHeatmap]      = useState({});
   const [loggedSeconds, setLogged]      = useState(0);
@@ -173,9 +172,9 @@ function AppContent() {
 
   // Boot: bring stored data up to the current schema version first (see
   // src/core/storage/migrations.js; this absorbed the old inline
-  // habitsMigrated block), then load everything in parallel. Tasks + habits
-  // hydrate their own store; the remaining sections are still held here
-  // until they are migrated the same way (docs/LIFEOS_PLAN.md).
+  // habitsMigrated block), then load everything in parallel. Migrated
+  // modules (src/features/*) hydrate their own stores; the remaining sections
+  // are still held here until they are migrated (ADR-003 template).
   useEffect(() => {
     (async () => {
       await runMigrations(appStorage, { seedJournal: JOURNAL_SEED });

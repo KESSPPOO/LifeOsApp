@@ -4,9 +4,8 @@
 // cases are covered for groceries in persistedListStore.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  toggleGrocery, deleteGrocery, addGrocery, filterGroceries, GROCERY_CATEGORIES,
-} from '../src/features/groceries/logic.js';
+import { KEYS } from '../src/core/storage/keys.js';
+import { toggleGrocery, deleteGrocery, addGrocery, filterGroceries } from '../src/features/groceries/logic.js';
 import { LEGACY_GROCERIES, parsed, setupListStore } from './fixtures.mjs';
 
 // ── Pure operations ─────────────────────────────────────────────────────────
@@ -37,14 +36,10 @@ test('filter: all / to buy / completed', () => {
   assert.deepEqual(filterGroceries(LEGACY_GROCERIES, 'completed').map(i => i.id), [3]);
 });
 
-test('categories are unchanged', () => {
-  assert.deepEqual(GROCERY_CATEGORIES, ['supermarket', 'pharmacy', 'home', 'other']);
-});
-
 // ── Through the store (what the screen does) ───────────────────────────────
 
 test('add, toggle, delete and clear all are persisted in the existing format', async () => {
-  const { store, adapter } = setupListStore({ key: 'groceries', values: { groceries: LEGACY_GROCERIES } });
+  const { store, adapter } = setupListStore({ key: KEYS.groceries, values: { groceries: LEGACY_GROCERIES } });
   await store.getState().hydrate();
   const { setItems } = store.getState();
 

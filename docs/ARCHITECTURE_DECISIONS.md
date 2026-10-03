@@ -138,8 +138,10 @@ one forgotten guard overwrites user data.
   domain rules, a pure `logic.js` (e.g. `features/groceries/logic.js`, or
   `src/data/tasks.js` for tasks).
 - The data-safety guarantees are tested once per module: the suite in
-  `tests/persistedListStore.test.mjs` runs against every migrated module's key
-  and real stored format.
+  `tests/persistedListStore.test.mjs` runs with each migrated module's
+  registered key (`KEYS`) and a fixture of its stored format. The app's
+  `store.js` bindings import AsyncStorage, so they are covered by
+  `check:bundle` and device testing, not by unit tests.
 - Scope is deliberately narrow: lists only. Non-list data (the profile
   scalars, the `heatmap` object) does not get bent into this factory. Write a
   sibling only when a second module of that shape needs it.
@@ -169,7 +171,8 @@ one forgotten guard overwrites user data.
 6. **Feature hooks:** screens read with `use<Module>()`, a narrow selector,
    instead of props.
 7. **Tests:** add the module to `MODULES` in
-   `tests/persistedListStore.test.mjs` with a fixture in today's stored
-   format, and test the module's operations (pure, and through the store).
+   `tests/persistedListStore.test.mjs` (its `KEYS` entry, a fixture of today's
+   stored format in `tests/fixtures.mjs`, a test seed), and test the module's
+   operations (pure, and through the store).
 8. **Remove it from `App.js`:** the `useState`, the `loadMany` entry, the
    `usePersist` setter, the props, and the now-unused seed import.

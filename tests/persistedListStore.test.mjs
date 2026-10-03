@@ -1,21 +1,20 @@
 // Data-safety tests for the shared createPersistedListStore
 // (src/core/state/persistedListStore.js). The whole suite runs once per
-// migrated module, against that module's real key and stored format, so the
-// guarantees are proven for every store that uses the factory.
+// migrated module, with the module's registered key (KEYS) and a fixture of
+// its stored format. (The app's store.js bindings import AsyncStorage and are
+// covered by check:bundle, not by these tests.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStorage } from '../src/core/storage/engine.js';
+import { KEYS } from '../src/core/storage/keys.js';
 import { createPersistedListStore } from '../src/core/state/persistedListStore.js';
 import {
-  LEGACY_JOURNAL, LEGACY_GROCERIES, rawStore, parsed, setupListStore, failReadsOf,
-  createMemoryAdapter, quietLogger,
+  LEGACY_JOURNAL, LEGACY_GROCERIES, JOURNAL_TEST_SEED, GROCERIES_TEST_SEED,
+  parsed, raw, setupListStore, failReadsOf, failWritesOf,
 } from './fixtures.mjs';
 
 const MODULES = [
-  { name: 'tasks', key: 'journal', stored: LEGACY_JOURNAL,
-    seed: [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }] },
-  { name: 'groceries', key: 'groceries', stored: LEGACY_GROCERIES,
-    seed: [{ id: 900, text: 'demo item', category: 'other', done: false }] },
+  { name: 'tasks', key: KEYS.journal, stored: LEGACY_JOURNAL, seed: JOURNAL_TEST_SEED },
+  { name: 'groceries', key: KEYS.groceries, stored: LEGACY_GROCERIES, seed: GROCERIES_TEST_SEED },
 ];
 
 for (const { name, key, stored, seed } of MODULES) {
@@ -25,18 +24,18 @@ for (const { name, key, stored, seed } of MODULES) {
 
   t("loads today's stored format unchanged, without rewriting it", async () => {
     const { store, adapter } = setup({ [key]: stored });
-    const before = adapter.data[`lifeos_${key}`];
+    const before = raw(adapter, key);
     await store.getState().hydrate();
     assert.deepEqual(store.getState().items, stored);
     assert.equal(store.getState().hydrated, true);
-    assert.equal(adapter.data[`lifeos_${key}`], before, 'byte-for-byte untouched');
+    assert.equal(raw(adapter, key), before, 'byte-for-byte untouched');
   });
 
   t('missing key: the seed is shown and not written', async () => {
     const { store, adapter } = setup({});
     await store.getState().hydrate();
     assert.deepEqual(store.getState().items, seed);
-    assert.equal(adapter.data[`lifeos_${key}`], undefined);
+    assert.equal(raw(adapter, key), undefined);
   });
 
   t('corrupt value: backed up, empty list shown (not demo data), saving allowed', async () => {
@@ -44,25 +43,24 @@ for (const { name, key, stored, seed } of MODULES) {
     await store.getState().hydrate();
     assert.deepEqual(store.getState().items, []);
     assert.equal(store.getState().persistBlocked, false);
-    assert.equal(adapter.data[`lifeos_corrupt_${key}`], '[{"id":1,');
+    assert.equal(raw(adapter, key, { backup: true }), '[{"id":1,');
   });
 
   t('wrong-typed value (not an array) counts as corrupt', async () => {
     const { store, adapter } = setup({ [key]: { not: 'a list' } });
     await store.getState().hydrate();
     assert.deepEqual(store.getState().items, []);
-    assert.equal(adapter.data[`lifeos_corrupt_${key}`], '{"not":"a list"}');
+    assert.equal(raw(adapter, key, { backup: true }), '{"not":"a list"}');
   });
 
   t('corrupt value whose backup fails: saving is blocked and the only copy is kept', async () => {
     const { store, adapter } = setup({ [key]: '[{"id":1,' });
-    const setItem = adapter.setItem;
-    adapter.setItem = async (k, v) => { if (k.includes('corrupt_')) throw new Error('full'); return setItem(k, v); };
+    failWritesOf(adapter, 'corrupt_');
     await store.getState().hydrate();
     assert.equal(store.getState().persistBlocked, true);
     store.getState().setItems([{ id: 1 }]);
     await store.getState().flush();
-    assert.equal(adapter.data[`lifeos_${key}`], '[{"id":1,');
+    assert.equal(raw(adapter, key), '[{"id":1,');
   });
 
   t('non-object entries in a damaged array are dropped on load', async () => {
@@ -144,16 +142,15 @@ for (const { name, key, stored, seed } of MODULES) {
 }
 
 test('two stores on the same storage only ever touch their own key', async () => {
-  const logger = quietLogger();
-  const adapter = createMemoryAdapter(rawStore({ journal: LEGACY_JOURNAL, groceries: LEGACY_GROCERIES }));
-  const storage = createStorage(adapter, { logger });
-  const tasks = createPersistedListStore({ storage, key: 'journal', logger });
-  const groceries = createPersistedListStore({ storage, key: 'groceries', logger });
-  const journalBefore = adapter.data.lifeos_journal;
+  const { adapter, storage, logger, store: tasks } = setupListStore({
+    key: KEYS.journal, values: { journal: LEGACY_JOURNAL, groceries: LEGACY_GROCERIES },
+  });
+  const groceries = createPersistedListStore({ storage, key: KEYS.groceries, logger });
+  const journalBefore = raw(adapter, KEYS.journal);
   await Promise.all([tasks.getState().hydrate(), groceries.getState().hydrate()]);
   groceries.getState().setItems([]);
   await groceries.getState().flush();
-  assert.deepEqual(parsed(adapter, 'groceries'), []);
-  assert.equal(adapter.data.lifeos_journal, journalBefore);
+  assert.deepEqual(parsed(adapter, KEYS.groceries), []);
+  assert.equal(raw(adapter, KEYS.journal), journalBefore);
   assert.deepEqual(tasks.getState().items, LEGACY_JOURNAL);
 });

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createStorage } from '../src/core/storage/engine.js';
 import { runMigrations, SCHEMA_VERSION, MIGRATIONS } from '../src/core/storage/migrations.js';
 import { KEYS, KEY_SPECS } from '../src/core/storage/keys.js';
-import { LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter, failReadsOf } from './fixtures.mjs';
+import { LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter, failReadsOf, failWritesOf } from './fixtures.mjs';
 
 function setup(values = {}) {
   const logger = quietLogger();
@@ -39,8 +39,7 @@ test('a value of the wrong type counts as corrupt when a type is given', async (
 
 test('a corrupt value whose backup cannot be written is reported as "error", not "corrupt"', async () => {
   const { storage, adapter } = setup({ journal: '[{"id":1,' });
-  const setItem = adapter.setItem;
-  adapter.setItem = async (k, v) => { if (k.includes('corrupt_')) throw new Error('full'); return setItem(k, v); };
+  failWritesOf(adapter, 'corrupt_');
   assert.equal((await storage.read('journal', { type: 'array' })).status, 'error');
   assert.equal(adapter.data.lifeos_journal, '[{"id":1,', 'the only copy is untouched');
 });

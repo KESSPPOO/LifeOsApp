@@ -198,8 +198,8 @@ Things that are easy to get wrong:
 - Dates are local `'YYYY-MM-DD'` strings built with `localDateKey()`. **Never
   use `toISOString()` for calendar dates**, because it shifts the day in
   Denmark (UTC+1/+2). Avoid `new Date('YYYY-MM-DD')` too: it parses as UTC.
-- Persisted setters (`usePersist` in `App.js`, `setJournal` in the tasks
-  store) save the entire collection on every change. Keep collections modest
+- Persisted setters (`usePersist` in `App.js`, `setItems` in every
+  `createPersistedListStore` store) save the entire collection on every change. Keep collections modest
   and do not write in tight loops.
 
 ### Danish and accessibility

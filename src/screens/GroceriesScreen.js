@@ -74,8 +74,8 @@ export default function GroceriesScreen() {
 
   const filteredGroceries = filterGroceries(groceries, filter);
 
-  const toBuyCount    = groceries.filter(i => !i.done).length;
-  const completedCount = groceries.filter(i =>  i.done).length;
+  const toBuyCount     = filterGroceries(groceries, 'to buy').length;
+  const completedCount = filterGroceries(groceries, 'completed').length;
 
   return (
     <View style={styles.root}>

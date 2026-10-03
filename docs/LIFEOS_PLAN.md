@@ -426,7 +426,9 @@ Foundation: storage/migrations ─ stores ─ navigation ─ i18n/da-DK ─ acce
 
 ## 11. Recommended next 5 Cloud Sessions
 
-Each one is reviewable on its own and leaves the app working.
+Each one is reviewable on its own and leaves the app working. The numbers
+below are planned roadmap steps, not the session counter used in the § 12
+changelog (where Session 3 was the Groceries migration).
 
 ### Session 2: Data layer (state and persistence out of `App.js`) — DONE for tasks/habits
 
@@ -453,7 +455,7 @@ the same recipe: the remaining collections, one per change (see Session 2b below
 - **Objective:** migrate **Groceries** (smallest collection, read only by
   `GroceriesScreen`, future Shopping module) to a store, and extract the
   generic data-safety logic out of `journalStore.js` into a reusable helper
-  in `src/core/storage/` that both stores use.
+  that both stores use (done as `src/core/state/persistedListStore.js`).
 - **Acceptance:** existing `lifeos_groceries` data loads unchanged
   (fixture test); the journal store's behaviour and tests are unchanged
   (tests moved to the helper where generic); `App.js` no longer holds
