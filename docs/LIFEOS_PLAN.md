@@ -144,9 +144,9 @@ Ordered roughly by how much it blocks LifeOS.
    - Persistence failures (`persistBlocked`) are only logged; the user is not
      told. Needs a UX decision (Danish message) in a UI session.
    - `parseGoalNumber` (comma decimals) lives in `features/goals/logic.js`.
-     When Finances' `parseFloat` comma bug is fixed, move it to
-     `src/data/helpers.js` as a shared Danish number parser instead of
-     copying it.
+     When Finances' `parseFloat` comma bug is fixed, build one shared Danish
+     number parser in `src/data/helpers.js` (comma decimals AND "." thousands
+     separators, which `parseGoalNumber` does not handle) and use it in both.
    - Each migrated store reads its own key with one `getItem` at boot (in
      parallel with `loadMany`). Fine for a few modules; if boot time matters
      later, let stores hydrate from a shared batched read.
@@ -171,6 +171,23 @@ Ordered roughly by how much it blocks LifeOS.
   Sums are shown without rounding (floating-point artefacts possible).
   Only 15 transactions are visible.
 - Tip bubbles can never show (see inventory).
+- Found by the Session 4 code review in code moved verbatim into
+  `src/features/*/logic.js` (pre-existing; deliberately not changed during
+  the migration; fix each as its own explicit behaviour change with tests):
+  - Goals: a goal counts as expired during its own deadline day
+    (`isGoalExpired` parses `'YYYY-MM-DD'` as UTC). Fix with `localDateKey`
+    comparison.
+  - Goals: the inline progress field is controlled by `String(progress)`, so
+    a comma decimal ("7,5") cannot be typed, clearing the field saves 0, and
+    every keystroke saves the whole list.
+  - Goals: `parseGoalNumber` ignores Danish thousands separators
+    ("5.000" -> 5).
+  - Links: `normalizeLinkUrl` checks a case-sensitive "http" prefix
+    ("HTTPS://x" -> "https://HTTPS://x"; "httpbin.org" gets no scheme).
+  - Goals/Notes/Links: entries without an `id` (only possible in damaged
+    data) cannot be edited or deleted individually.
+  - List operations return a new array even when nothing changed, so a
+    no-op tap still saves the whole list (old behaviour too).
 - Onboarding discards year and selected goals.
 - Upstream README "Known Issues" (drag reliability, first tap on checkbox,
   composer vs keyboard, Grade Simulator commit, drawer overlapping the status
