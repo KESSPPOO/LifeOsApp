@@ -7,7 +7,7 @@ import { createStorage } from '../src/core/storage/engine.js';
 import { runMigrations } from '../src/core/storage/migrations.js';
 import { createJournalStore } from '../src/features/tasks/journalStore.js';
 import { groupJournal, toggleJournalEntry } from '../src/data/tasks.js';
-import { TODAY, LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter } from './fixtures.mjs';
+import { TODAY, LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter, failReadsOf } from './fixtures.mjs';
 
 const SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
 
@@ -34,10 +34,11 @@ test('missing journal shows the seed and does not write it', async () => {
   assert.equal(adapter.data.lifeos_journal, undefined);
 });
 
-test('corrupt journal: seed is shown, the damaged value is backed up', async () => {
+test('corrupt journal: an empty list is shown (not demo data), the damaged value is backed up', async () => {
   const { store, adapter } = setup({ journal: '[{"id":1,' });
   await store.getState().hydrate();
-  assert.deepEqual(store.getState().journal, SEED);
+  assert.deepEqual(store.getState().journal, []);
+  assert.equal(store.getState().persistBlocked, false);
   assert.equal(adapter.data.lifeos_corrupt_journal, '[{"id":1,');
 });
 
@@ -80,14 +81,34 @@ test('changes made before hydration are not saved over stored data', async () =>
 
 test('if the journal cannot be read, edits stay in memory and stored data is not overwritten', async () => {
   const { store, adapter } = setup({ journal: LEGACY_JOURNAL });
-  const getItem = adapter.getItem;
-  adapter.getItem = async () => { throw new Error('io'); };
+  failReadsOf(adapter, 'journal', 2); // first read and its retry
   await store.getState().hydrate();
-  adapter.getItem = getItem;
   assert.equal(store.getState().persistBlocked, true);
+  assert.deepEqual(store.getState().journal, [], 'no demo data shown');
   store.getState().setJournal(prev => [...prev, { id: 1000, text: 'x' }]);
   await store.getState().flush();
   assert.deepEqual(storedJournal(adapter), LEGACY_JOURNAL);
+});
+
+test('a single transient read error is retried at once', async () => {
+  const { store, adapter } = setup({ journal: LEGACY_JOURNAL });
+  failReadsOf(adapter, 'journal', 1);
+  await store.getState().hydrate();
+  assert.equal(store.getState().persistBlocked, false);
+  assert.deepEqual(store.getState().journal, LEGACY_JOURNAL);
+});
+
+test('after a failed read, a later hydrate (retry / next boot) recovers and saving resumes', async () => {
+  const { store, adapter } = setup({ journal: LEGACY_JOURNAL });
+  failReadsOf(adapter, 'journal', 2);
+  await store.getState().hydrate();
+  assert.equal(store.getState().persistBlocked, true);
+  await store.getState().hydrate();
+  assert.equal(store.getState().persistBlocked, false);
+  assert.deepEqual(store.getState().journal, LEGACY_JOURNAL);
+  store.getState().setJournal(prev => prev.slice(1));
+  await store.getState().flush();
+  assert.deepEqual(storedJournal(adapter), LEGACY_JOURNAL.slice(1));
 });
 
 test('pre-v1.4 install: migrate, then hydrate, shows tasks and the old habits', async () => {

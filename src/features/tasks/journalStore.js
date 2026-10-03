@@ -29,18 +29,30 @@ export function createJournalStore({ storage, seed = [], logger = console }) {
   return createStore((set, get) => ({
     journal: [],
     hydrated: false,
-    // true when the stored journal could not be read (adapter error). Edits
-    // then stay in memory only, so the unread data on disk is never
-    // overwritten; the next launch tries again.
+    // true when the stored journal could not be read (adapter error, or a
+    // corrupt value that could not be backed up). Edits then stay in memory
+    // only, so data on disk that was never read is never overwritten.
+    // hydrate() may be called again (next boot, ErrorBoundary retry) to
+    // recover once storage works.
     persistBlocked: false,
 
-    /** Loads the stored journal once. Call after runMigrations(). */
+    /**
+     * Loads the stored journal. Call after runMigrations(). Runs once; a
+     * second call is a no-op (it must never replace live, already-saved
+     * state with a stale read) unless the previous read failed.
+     */
     hydrate: async () => {
-      if (get().hydrated) return; // never replace live state with a stale read
-      const { status, value } = await storage.read(KEYS.journal, { type: 'array' });
-      if (status === 'error') logger.warn('journal: read failed; changes will not be saved this session');
+      const { hydrated, persistBlocked } = get();
+      if (hydrated && !persistBlocked) return;
+      const readJournal = () => storage.read(KEYS.journal, { type: 'array' });
+      let { status, value } = await readJournal();
+      if (status === 'error') ({ status, value } = await readJournal()); // one retry for transient errors
+      if (status === 'error') logger.warn('journal: read failed; changes will not be saved until it can be read');
       set({
-        journal: status === 'ok' ? sanitize(value) : seed,
+        // missing -> demo seed (fresh install, as before); corrupt (raw value
+        // backed up to corrupt_journal) or unreadable -> empty, never demo
+        // data that would look like, and then be saved as, the user's own.
+        journal: status === 'ok' ? sanitize(value) : status === 'missing' ? seed : [],
         hydrated: true,
         persistBlocked: status === 'error',
       });

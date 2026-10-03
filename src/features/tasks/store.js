@@ -8,7 +8,10 @@ import { appStorage } from '../../core/storage';
 import { INIT_JOURNAL } from '../../data/seedData';
 import { createJournalStore } from './journalStore';
 
-export const journalStore = createJournalStore({ storage: appStorage, seed: INIT_JOURNAL });
+/** Demo list for a fresh install; also handed to migrations (one source). */
+export const JOURNAL_SEED = INIT_JOURNAL;
+
+export const journalStore = createJournalStore({ storage: appStorage, seed: JOURNAL_SEED });
 
 /** The tasks + habits list. Re-renders only when the list changes. */
 export const useJournal = () => useStore(journalStore, s => s.journal);

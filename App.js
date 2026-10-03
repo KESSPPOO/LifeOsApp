@@ -12,12 +12,12 @@ import { NAV } from './src/config/nav';
 import { todayKey } from './src/data/helpers';
 import { saveJSON } from './src/data/storage';
 import { appStorage, runMigrations, KEYS } from './src/core/storage';
-import { hydrateJournal } from './src/features/tasks/store';
+import { hydrateJournal, JOURNAL_SEED } from './src/features/tasks/store';
 import { ErrorBoundary } from './src/app/ErrorBoundary';
 import { FadeSlideIn } from './src/components/FadeSlideIn';
 import {
   INIT_EXAMS, INIT_FINANCES,
-  INIT_GROCERIES, INIT_GOALS, INIT_NOTES, INIT_LINKS, INIT_JOURNAL,
+  INIT_GROCERIES, INIT_GOALS, INIT_NOTES, INIT_LINKS,
 } from './src/data/seedData';
 import { auth } from './src/config/firebase';
 import {
@@ -177,7 +177,7 @@ function AppContent() {
   // until they are migrated the same way (docs/LIFEOS_PLAN.md).
   useEffect(() => {
     (async () => {
-      await runMigrations(appStorage, { seedJournal: INIT_JOURNAL });
+      await runMigrations(appStorage, { seedJournal: JOURNAL_SEED });
       const [data] = await Promise.all([
         appStorage.loadMany([
           { key: KEYS.isFirstUse,    fallback: true },
@@ -231,11 +231,11 @@ function AppContent() {
         [key]: Math.round(((heatmap[key] || 0) + hrs) * 10) / 10,
       };
       setHeatmap(newHeatmap);
-      saveJSON('heatmap', newHeatmap);
+      saveJSON(KEYS.heatmap, newHeatmap);
 
       const newLogged = loggedSeconds + timerSec;
       setLogged(newLogged);
-      saveJSON('loggedSeconds', newLogged);
+      saveJSON(KEYS.loggedSeconds, newLogged);
 
       setTimerSec(0);
     }
@@ -252,11 +252,11 @@ function AppContent() {
     setUserName(data.name);
     setCourse(data.course);
     setTotalCredits(data.totalCredits);
-    saveJSON('userName', data.name);
-    saveJSON('course', data.course);
-    saveJSON('totalCredits', data.totalCredits);
+    saveJSON(KEYS.userName, data.name);
+    saveJSON(KEYS.course, data.course);
+    saveJSON(KEYS.totalCredits, data.totalCredits);
     setIsFirstUse(false);
-    saveJSON('isFirstUse', false);
+    saveJSON(KEYS.isFirstUse, false);
   };
 
   // Full flow: native One Tap → Firebase credential → link (if the user
@@ -308,15 +308,15 @@ function AppContent() {
   const dismissTip = (tipId) => {
     const updated = [...tipsShown, tipId];
     setTipsShown(updated);
-    saveJSON('tipsShown', updated);
+    saveJSON(KEYS.tipsShown, updated);
   };
 
-  const pExams      = usePersist('exams',      setExams);
-  const pFinances   = usePersist('finances',   setFinances);
-  const pGroceries  = usePersist('groceries',  setGroceries);
-  const pGoals      = usePersist('goals',      setGoals);
-  const pNotes      = usePersist('notes',      setNotes);
-  const pLinks      = usePersist('links',      setLinks);
+  const pExams      = usePersist(KEYS.exams,      setExams);
+  const pFinances   = usePersist(KEYS.finances,   setFinances);
+  const pGroceries  = usePersist(KEYS.groceries,  setGroceries);
+  const pGoals      = usePersist(KEYS.goals,      setGoals);
+  const pNotes      = usePersist(KEYS.notes,      setNotes);
+  const pLinks      = usePersist(KEYS.links,      setLinks);
 
   const timerProps = {
     timerSec:       loggedSeconds + timerSec,

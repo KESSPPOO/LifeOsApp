@@ -10,7 +10,9 @@
 //   return false (and are logged), exactly like the old loadJSON/saveJSON.
 // - Unparsable JSON, or a value of the wrong `type`, is treated as corrupt:
 //   the raw string is first copied to `corrupt_<key>` so it is never lost,
-//   then the caller's fallback is used.
+//   then the caller's fallback is used. If that backup cannot be written,
+//   the read is reported as 'error' instead: the original is then the only
+//   copy, and callers must not overwrite it.
 // - A read *error* (the adapter itself failed) is reported as status
 //   'error', distinct from 'missing', so callers can avoid overwriting data
 //   they could not read.
@@ -39,11 +41,14 @@ function matchesType(value, type) {
 export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = console } = {}) {
   const full = (key) => prefix + key;
 
+  // true when the raw value is safely copied to corrupt_<key>.
   async function backupCorrupt(key, raw) {
     try {
       await adapter.setItem(full(corruptBackupKey(key)), raw);
+      return true;
     } catch (e) {
       logger.warn(`storage: could not back up corrupt "${key}"`, e);
+      return false;
     }
   }
 
@@ -54,8 +59,8 @@ export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = conso
     let parsed = true;
     try { value = JSON.parse(raw); } catch { parsed = false; }
     if (!parsed || !matchesType(value, type)) {
-      await backupCorrupt(key, raw);
-      return { status: 'corrupt', value: undefined };
+      const backedUp = await backupCorrupt(key, raw);
+      return { status: backedUp ? 'corrupt' : 'error', value: undefined };
     }
     return { status: 'ok', value };
   }

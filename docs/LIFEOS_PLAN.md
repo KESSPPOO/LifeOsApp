@@ -107,7 +107,9 @@ Ordered roughly by how much it blocks LifeOS.
 1. **God component:** `App.js` owns every collection, load sequence,
    persistence wrapper, auth flow, navigation, drawer and timer. Every update
    re-renders the whole tree, and every new module means more props threaded
-   through `App.js`.
+   through `App.js`. *Session 2:* tasks and habits moved to a Zustand store,
+   migrations and parallel loading moved to `src/core/storage`; the other
+   collections remain.
 2. **No real navigation:** the custom switcher cannot do nested stacks, deep
    links or per-tab history. Back handling is a hand-rolled history array, and
    the drawer is a `Modal`. React Navigation is installed but unused.
@@ -117,11 +119,32 @@ Ordered roughly by how much it blocks LifeOS.
    every change from inside a `setState` updater (side effect in an updater).
    There is no schema version, no migration runner, no export/backup, and
    load is sequential (`await` × 14). Fine for hundreds of records, not for
-   years of workout sets, meals and sleep logs.
+   years of workout sets, meals and sleep logs. *Session 2:* schema version,
+   migration runner, corrupt-value backups and parallel loading added; the
+   one-blob-per-key format and lack of export remain.
 5. **IDs are inconsistent:** `max(id)+1` in most screens, `Date.now()` in
    Exams and Links, fixed IDs in seed data. `max+1` can reuse the ID of a
    deleted item, which is risky once records reference each other.
-6. **No error boundary:** a render error blanks the app.
+6. ~~**No error boundary:** a render error blanks the app.~~ Root
+   `ErrorBoundary` added in Session 2.
+7. **Deferred from the Session 2 reviews** (do with the next module
+   migration, not piecemeal):
+   - Extract the generic data-safety part of `journalStore.js` (hydrate once,
+     retry/`persistBlocked`, ordered saves, no save before hydration) into a
+     reusable helper in `src/core/storage/` so each module store does not copy
+     ~30 lines. Do it when the second module migrates, with its tests moved
+     to the helper.
+   - Make `KEY_SPECS` types the default in the engine (`type ?? spec.type`)
+     so `App.js`-owned keys are shape-checked too. Small behaviour change for
+     legacy keys (malformed values fall back instead of crashing a screen);
+     do it as an explicit step.
+   - Coalesce superseded writes (keep one in-flight save plus the latest
+     pending value) instead of queueing every full-list save.
+   - Persistence failures (`persistBlocked`) are only logged; the user is not
+     told. Needs a UX decision (Danish message) in a UI session.
+   - 9 known lint warnings (unused variables/imports in `DatePicker`,
+     `StatCard`, `JournalScreen`, `OnboardingScreen`, `StatsScreen`,
+     `UniScreen`; `exhaustive-deps` in `TipBubble`). None affect behaviour.
 
 **Correctness (not fixed this session unless noted)**
 - ~~Overdue tasks vanished from the Tasks screen~~ — **fixed** this session.
@@ -157,8 +180,9 @@ Ordered roughly by how much it blocks LifeOS.
   unknown.
 
 **Tooling and config**
-- There were no tests, lint or type checking. This session added unit tests
-  and validation scripts; ESLint is still missing.
+- There were no tests, lint or type checking. Session 1 added unit tests and
+  validation scripts; Session 2 added ESLint (`npm run lint`, part of
+  `validate`). No type checking yet.
 - `npm audit`: 51 advisories (1 critical in `tar`, 35 high), mostly in
   transitive build tooling. Review them in a dependency session. Do **not**
   run `npm audit fix --force`, because it breaks Expo SDK alignment.
@@ -406,7 +430,10 @@ Foundation: storage/migrations ─ stores ─ navigation ─ i18n/da-DK ─ acce
 
 Each one is reviewable on its own and leaves the app working.
 
-### Session 2: Data layer (state and persistence out of `App.js`)
+### Session 2: Data layer (state and persistence out of `App.js`) — DONE for tasks/habits
+
+Done in Session 2 as a proof on one module (see § 12). Still to do with
+the same recipe: the remaining collections, one per change (see Session 2b below).
 - **Objective:** `App.js` no longer owns domain data. Introduce a repository
   with a schema version and a migration runner, and per-domain stores. No
   user-visible change.
@@ -423,6 +450,17 @@ Each one is reviewable on its own and leaves the app working.
   much smaller and holds only shell concerns; `npm run validate` and lint
   pass; no visual or behaviour change; device smoke test checklist included
   in the PR.
+
+### Session 2b (next): second module on the store pattern + shared helper
+- **Objective:** migrate **Groceries** (smallest collection, read only by
+  `GroceriesScreen`, future Shopping module) to a store, and extract the
+  generic data-safety logic out of `journalStore.js` into a reusable helper
+  in `src/core/storage/` that both stores use.
+- **Acceptance:** existing `lifeos_groceries` data loads unchanged
+  (fixture test); the journal store's behaviour and tests are unchanged
+  (tests moved to the helper where generic); `App.js` no longer holds
+  groceries; validate passes. Then repeat per collection (Goals, Notes,
+  Links, Finances, Exams, profile) in small follow-ups.
 
 ### Session 3: Navigation (React Navigation)
 - **Objective:** replace the `useState` switcher and custom drawer with React
@@ -472,3 +510,4 @@ Each one is reviewable on its own and leaves the app working.
 | Session | Change |
 |---|---|
 | 1 (2026-10-03) | Audit, `CLAUDE.md`, this plan. Fixed launch crash (Firebase key now from `EXPO_PUBLIC_FIREBASE_API_KEY`, `auth` null when unset). Fixed overdue tasks being invisible on the Tasks screen (new "Overdue" section; a task ticked off there stays visible, dimmed, for the rest of the visit so the tap can be undone). Onboarding hides "Continue with Google" when Firebase is not configured. `computeStreak` now counts from the passed date instead of the wall clock. Extracted task grouping and streak logic to `src/data/tasks.js` (deduplicated from `seedData.js`). Added `npm test` (node:test, 18 tests), `check:bundle`, `validate`, `doctor` scripts. Removed the ignored, conflicting `app.json` (effective config unchanged). Ignored `.env` and `.env.*` (except `.env.example`). |
+| 2 (2026-10-03) | Versioned storage in `src/core/storage` (engine over injectable adapter, never throws, corrupt values backed up to `lifeos_corrupt_<key>`, read errors distinct from missing; documented key registry; `schemaVersion` + migration runner). Migration 1 absorbs the old inline `habitsMigrated` block (same result; atomic write, duplicate guard, aborts on unreadable data). Tasks + habits moved to a Zustand store (`src/features/tasks`, ADR-001); `App.js` no longer holds `journal`; Journal/Home/Stats read via hooks; on-disk format unchanged. Boot runs migrations then loads in parallel. Root `ErrorBoundary` (Danish fallback). ESLint via `expo lint` added to `validate`. New dependency: `zustand`. 54 tests. Behaviour change only for damaged data: a corrupt/unreadable journal shows empty instead of demo data. |

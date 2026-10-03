@@ -1,8 +1,9 @@
 # CLAUDE.md — LifeOS repository guide
 
 Read this first in every session. The long-term plan lives in
-[`docs/LIFEOS_PLAN.md`](docs/LIFEOS_PLAN.md). Read the section for the module
-you are touching before you change anything.
+[`docs/LIFEOS_PLAN.md`](docs/LIFEOS_PLAN.md) and accepted architecture
+decisions in [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md).
+Read the section for the module you are touching before you change anything.
 
 ## Project purpose
 
@@ -28,31 +29,40 @@ prototype.**
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
 | Navigation | Hand-rolled `useState` screen switcher plus a custom drawer in `App.js`. `@react-navigation/*` is installed but **not used yet** |
-| State | All domain state lives in `App.js` (`useState`) and is passed to screens as props |
-| Persistence | AsyncStorage through `src/data/storage.js` (`loadJSON` / `saveJSON`, key prefix `lifeos_`). Each collection is one JSON blob |
+| State | **Mid-migration (ADR-001).** Tasks and habits (`journal`) live in a Zustand store (`src/features/tasks/`) that screens read with hooks. All other collections still live in `App.js` (`useState`) and are passed as props, until each is migrated with the same recipe |
+| Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
 | Auth (optional) | Firebase Auth (anonymous plus Google One Tap). Disabled unless `EXPO_PUBLIC_FIREBASE_API_KEY` is set; without it the onboarding Google button is hidden. Nothing is synced |
-| Tests | Node's built-in test runner, for pure modules only (`tests/*.test.mjs`) |
+| Tests | Node's built-in test runner, for pure modules and stores (`tests/*.test.mjs`, in-memory storage adapter in `tests/fixtures.mjs`) |
+| Lint | ESLint 9 flat config via `expo lint` (`eslint.config.js`, `eslint-config-expo`) |
 | Builds | EAS (`eas.json`: `development`, `apk`, `production`) |
 
 ## Repository structure
 
 ```
-App.js                 Root: loads all data, global state, drawer, bottom nav, screen switcher
+App.js                 Root shell: boot (migrations, then parallel load), state for not-yet-migrated sections, drawer, bottom nav, screen switcher
 app.config.js          The ONLY Expo config (there is deliberately no app.json)
 metro.config.js        Disables package "exports" resolution (needed by firebase/auth)
 eas.json               EAS build profiles
+eslint.config.js       Expo ESLint config
 src/
+  app/                 App-shell pieces: ErrorBoundary (root fallback, Danish)
+  core/storage/        Versioned persistence: engine.js (adapter-agnostic, never throws),
+                       keys.js (documented key registry), migrations.js (SCHEMA_VERSION +
+                       ordered migrations), index.js (appStorage = engine over AsyncStorage)
+  features/tasks/      Tasks + habits store: journalStore.js (pure factory, tested),
+                       store.js (singleton + useJournal / useSetJournal hooks)
   config/              colors.js (theme tokens), nav.js (screen registry), firebase.js
   data/                Pure logic and persistence; no React in here
     helpers.js         Dates (localDateKey!), grade math, formatting
     tasks.js           Task/habit grouping and streaks (unit-tested)
-    storage.js         loadJSON / saveJSON (AsyncStorage)
+    storage.js         saveJSON (legacy write path for App.js-owned sections; delegates to core/storage)
     seedData.js        Demo data that fills an empty install
   components/          Shared UI (Card, Pill, StatCard, DatePicker, GlassSheet, CustomAlert, DraggableList, …)
   screens/             One file per screen; holds local UI state and calls the setters passed in
-tests/                 node:test unit tests for src/data/*
+tests/                 node:test unit tests (data logic, storage, migrations, stores) + fixtures.mjs
 docs/LIFEOS_PLAN.md    Audit, target architecture, roadmap
+docs/ARCHITECTURE_DECISIONS.md  ADRs (Zustand stores, versioned storage)
 ```
 
 ## Commands
@@ -60,8 +70,9 @@ docs/LIFEOS_PLAN.md    Audit, target architecture, roadmap
 ```bash
 npm ci                    # install (uses package-lock.json)
 npm test                  # unit tests (node:test auto-discovers **/*.test.mjs; no device needed)
+npm run lint              # expo lint (ESLint); errors fail, warnings are known cleanup
 npm run check:bundle      # Metro production bundle for Android; catches import and syntax errors
-npm run validate          # test + check:bundle; run this after every change
+npm run validate          # test + lint + check:bundle; run this after every change
 npm run doctor            # expo-doctor (some checks need network access)
 
 npm run android           # expo run:android: local native build (Android SDK + google-services.json)
@@ -142,24 +153,45 @@ Things that are easy to get wrong:
 - Colours come from `COLORS` in `src/config/colors.js`. Do not hard-code new
   hex values in screens.
 
-### Data persistence
-- Always go through `src/data/storage.js` (it adds the `lifeos_` prefix and
-  swallows read errors). `HomeScreen`'s direct use of AsyncStorage for the
-  section order is legacy; do not copy it.
+### State and stores (ADR-001)
+- A migrated module owns a Zustand store in `src/features/<module>/`: a pure
+  factory taking injected storage (tested with the in-memory adapter) plus a
+  small binding file exporting the singleton and hooks. Follow
+  `src/features/tasks/` exactly; do not invent a second pattern.
+- Screens read with narrow selectors (`useStore(store, s => s.list)`). Never
+  return a new object or array from a selector (render loop); use
+  `useShallow` if unavoidable.
+- No Zustand `persist` middleware (it would change the on-disk format).
+  Hydrate explicitly at boot after `runMigrations`; never save during
+  hydration, before hydration, or after a failed read (`persistBlocked`).
+- Migrate **one module per change**, with tests proving its existing stored
+  format still loads. Sections not yet migrated keep the `App.js` pattern.
+
+### Data persistence (ADR-002)
+- Use `appStorage` from `src/core/storage` in new code (`read` / `load` /
+  `loadMany` / `save` / `saveMany`). It never throws, adds the `lifeos_`
+  prefix, backs corrupt values up to `lifeos_corrupt_<key>`, and reports read
+  errors as status `'error'` (distinct from `'missing'`). Never overwrite a
+  key whose read returned `'error'`. `saveJSON` remains only for `App.js`'s
+  legacy sections. `HomeScreen`'s direct AsyncStorage use for the section
+  order is legacy; do not copy it.
+- Every key is documented in `src/core/storage/keys.js` (type, owner). Add new
+  keys there and refer to them as `KEYS.x`, not string literals.
 - **Never rename an existing storage key or change a stored field's meaning
-  without a migration.** Keys in use: `isFirstUse`, `userName`, `course`,
-  `totalCredits`, `tipsShown`, `exams`, `finances`, `groceries`, `goals`,
-  `notes`, `links`, `journal` (tasks *and* habits, shown as "Tasks"),
-  `heatmap`, `loggedSeconds`, `habitsMigrated`, `home_section_order`. The
-  `journal` id and key must stay, even though the UI calls it Tasks.
-- Migrations: until a versioned migration runner exists (planned), follow the
-  `habitsMigrated` pattern in `App.js`, i.e. a one-shot flag key, idempotent,
-  never destructive.
+  without a migration.** The `journal` key must stay, even though the UI
+  calls it Tasks.
+- Migrations live in `src/core/storage/migrations.js`: append
+  `{ version, name, up }`; `SCHEMA_VERSION` follows. Each must be idempotent
+  (check its own preconditions), non-destructive (never delete legacy keys),
+  write related keys together with `saveMany`, and throw to abort (the
+  version is then not bumped and it retries next launch). Add tests that
+  start from the previous on-disk format, including running it twice.
 - Dates are local `'YYYY-MM-DD'` strings built with `localDateKey()`. **Never
   use `toISOString()` for calendar dates**, because it shifts the day in
   Denmark (UTC+1/+2). Avoid `new Date('YYYY-MM-DD')` too: it parses as UTC.
-- Persisted setters (`usePersist` in `App.js`) save the entire collection on
-  every change. Keep collections modest and do not write in tight loops.
+- Persisted setters (`usePersist` in `App.js`, `setJournal` in the tasks
+  store) save the entire collection on every change. Keep collections modest
+  and do not write in tight loops.
 
 ### Danish and accessibility
 - New screens and modules should be Danish. Existing screens are still
@@ -183,4 +215,12 @@ Things that are easy to get wrong:
   Treat it as public: restrict it in the Google Cloud console.
 - The study timer and heatmap state in `App.js` is dead code. No screen calls
   the timer props, so "Study Days" stays at 0 for new installs.
+- `metro.config.js` disables package `exports` resolution. A new dependency
+  must resolve through its root files or `main` (check with
+  `npm run check:bundle`); `zustand` and `zustand/vanilla` do.
+- The tasks store is a module singleton: it survives `ErrorBoundary` retries
+  and is re-created by Fast Refresh when its file is edited (dev only;
+  reload the app after editing store files).
+- `expo lint` / `expo-doctor` may try to reach the Expo API; in a sandbox
+  without access use `EXPO_OFFLINE=1`.
 - More are listed in `docs/LIFEOS_PLAN.md` § 3.

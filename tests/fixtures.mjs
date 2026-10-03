@@ -51,6 +51,23 @@ export function createMemoryAdapter(data = {}) {
   };
 }
 
+/** Makes reads of one key fail (simulates an AsyncStorage I/O error). */
+export function failReadsOf(adapter, key, times = Infinity) {
+  const getItem = adapter.getItem;
+  const multiGet = adapter.multiGet;
+  const full = STORAGE_PREFIX + key;
+  let left = times;
+  const fail = () => left-- > 0;
+  adapter.getItem = async (k) => {
+    if (k === full && fail()) throw new Error(`io error reading ${k}`);
+    return getItem(k);
+  };
+  adapter.multiGet = async (keys) => {
+    if (keys.includes(full) && fail()) throw new Error('io error in multiGet');
+    return multiGet(keys);
+  };
+}
+
 /** A logger that records instead of printing (keeps test output clean). */
 export function quietLogger() {
   const warnings = [];

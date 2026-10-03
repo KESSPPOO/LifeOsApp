@@ -91,7 +91,14 @@ safely across many modules.
   migration runs and the version is not lowered.
 - Reads are defensive: unparsable JSON, or a value of the wrong type, falls
   back to the default, and the raw value is first copied to
-  `lifeos_corrupt_<key>` so it is never silently lost.
+  `lifeos_corrupt_<key>` so it is never silently lost. If that backup cannot
+  be written, the read is reported as `'error'` instead of `'corrupt'`.
+- A read `'error'` means "unknown", never "missing": migrations abort on it
+  (retry next launch), and stores block saving until a later read succeeds,
+  so data that was never read cannot be overwritten.
+- Demo/seed data is used only when a key is genuinely missing (fresh
+  install). A corrupt or unreadable collection shows as empty rather than
+  as demo data that would then be saved as the user's own.
 - On-disk formats stay as they are (e.g. `journal` remains a plain array).
   A migration changes a format only when there is a reason, never as a side
   effect of a refactor.

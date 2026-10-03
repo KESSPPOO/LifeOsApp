@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createStorage } from '../src/core/storage/engine.js';
 import { runMigrations, SCHEMA_VERSION, MIGRATIONS } from '../src/core/storage/migrations.js';
 import { KEYS, KEY_SPECS } from '../src/core/storage/keys.js';
-import { LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter } from './fixtures.mjs';
+import { LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter, failReadsOf } from './fixtures.mjs';
 
 function setup(values = {}) {
   const logger = quietLogger();
@@ -35,6 +35,14 @@ test('a value of the wrong type counts as corrupt when a type is given', async (
   assert.equal(adapter.data.lifeos_corrupt_journal, '{"not":"an array"}');
   // Without a type the legacy behaviour is kept: any valid JSON is returned.
   assert.deepEqual(await storage.load('journal', []), { not: 'an array' });
+});
+
+test('a corrupt value whose backup cannot be written is reported as "error", not "corrupt"', async () => {
+  const { storage, adapter } = setup({ journal: '[{"id":1,' });
+  const setItem = adapter.setItem;
+  adapter.setItem = async (k, v) => { if (k.includes('corrupt_')) throw new Error('full'); return setItem(k, v); };
+  assert.equal((await storage.read('journal', { type: 'array' })).status, 'error');
+  assert.equal(adapter.data.lifeos_journal, '[{"id":1,', 'the only copy is untouched');
 });
 
 test('an adapter read error is reported as "error" and nothing is backed up', async () => {
@@ -164,6 +172,32 @@ test('data from a newer build is left alone and the version is never lowered', a
   assert.deepEqual(r, { from: 99, to: 99, applied: [] });
   assert.equal(parsed(adapter, 'schemaVersion'), 99);
   assert.equal(adapter.data.lifeos_journal, undefined);
+});
+
+test('migration 1 aborts if the journal cannot be read (never overwrites it with demo data)', async () => {
+  const { storage, adapter, logger } = setup({ journal: LEGACY_JOURNAL, habits: LEGACY_HABITS });
+  failReadsOf(adapter, 'journal');
+  const r = await runMigrations(storage, { seedJournal: [{ id: 99 }] }, { logger });
+  assert.ok(r.error);
+  assert.equal(r.to, 0);
+  assert.deepEqual(parsed(adapter, 'journal'), LEGACY_JOURNAL);
+  assert.equal(adapter.data.lifeos_habitsMigrated, undefined);
+  assert.equal(adapter.data.lifeos_schemaVersion, undefined);
+});
+
+test('migration 1 aborts if the old habits cannot be read (does not mark them migrated)', async () => {
+  const { storage, adapter, logger } = setup({ journal: LEGACY_JOURNAL, habits: LEGACY_HABITS });
+  failReadsOf(adapter, 'habits');
+  const r = await runMigrations(storage, {}, { logger });
+  assert.ok(r.error);
+  assert.equal(adapter.data.lifeos_habitsMigrated, undefined);
+});
+
+test('migration 1 with a corrupt journal: backed up, habits merged into an empty list (no demo data)', async () => {
+  const { storage, adapter } = setup({ journal: 'not json', habits: LEGACY_HABITS });
+  await runMigrations(storage, { seedJournal: [{ id: 99 }] });
+  assert.equal(adapter.data.lifeos_corrupt_journal, 'not json');
+  assert.deepEqual(parsed(adapter, 'journal').map(j => j.text), ['Meditation', 'Water']);
 });
 
 test('a failed migration keeps the old version and succeeds on the next launch', async () => {

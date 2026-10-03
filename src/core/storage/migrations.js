@@ -19,10 +19,12 @@ import { KEYS } from './keys.js';
 // Formerly an inline one-shot block in App.js guarded by `habitsMigrated`:
 // habits used to live under their own `habits` key ({ id, name, icon,
 // history, streak }). They are appended to `journal` as recurring entries.
-// Behaviour is identical to the old App.js code, plus two safety additions:
-// journal and the flag are written in one multiSet, and a habit whose exact
-// copy (same name and history) is already in the journal is not added again
-// (covers a crash between the two separate writes the old code made).
+// The result is identical to the old App.js code for readable data, plus
+// safety additions: journal and the flag are written in one multiSet; a
+// habit whose exact copy (same name and history) is already in the journal
+// is not added again (covers a crash between the two separate writes the old
+// code made); unreadable data aborts the migration (retried next launch);
+// a corrupt journal is merged into an empty list instead of the demo one.
 function sameHistory(a = {}, b = {}) {
   const ka = Object.keys(a).sort();
   const kb = Object.keys(b).sort();
@@ -30,22 +32,33 @@ function sameHistory(a = {}, b = {}) {
 }
 
 async function mergeLegacyHabits(storage, { seedJournal = [] } = {}) {
-  const { habitsMigrated, habits, journal } = await storage.loadMany([
-    { key: KEYS.habitsMigrated, fallback: false },
-    { key: KEYS.habits, fallback: [], type: 'array' },
-    { key: KEYS.journal, fallback: null, type: 'array' },
+  const [flag, habitsRead, journalRead] = await Promise.all([
+    storage.read(KEYS.habitsMigrated),
+    storage.read(KEYS.habits, { type: 'array' }),
+    storage.read(KEYS.journal, { type: 'array' }),
   ]);
+  // Never decide anything from data we could not read: treating an
+  // unreadable journal as "missing" would overwrite it with demo data, and an
+  // unreadable habits list as "empty" would strand those habits forever.
+  if ([flag, habitsRead, journalRead].some(r => r.status === 'error')) {
+    throw new Error('legacy data could not be read');
+  }
 
-  if (habitsMigrated) return; // already done by this migration or by an older build
+  if (flag.status === 'ok' && flag.value) return; // done by this migration or an older build
 
+  const habits = habitsRead.status === 'ok' ? habitsRead.value : [];
   if (habits.length === 0) {
     if (!(await storage.save(KEYS.habitsMigrated, true))) throw new Error('could not save habitsMigrated');
     return;
   }
 
-  // Same as the old `loadJSON('journal', INIT_JOURNAL)`: an install that never
-  // saved its journal gets the demo journal plus its old habits.
-  const base = journal ?? seedJournal;
+  // Never saved -> demo journal plus old habits, as the old
+  // `loadJSON('journal', INIT_JOURNAL)` did. Corrupt (already backed up to
+  // corrupt_journal by the engine) -> start from an empty list rather than
+  // passing demo data off as the user's own.
+  const base = journalRead.status === 'ok' ? journalRead.value
+    : journalRead.status === 'missing' ? seedJournal
+    : [];
   const toAdd = habits.filter(h => h && !base.some(j =>
     j && j.recurring && j.text === h.name && sameHistory(j.history, h.history)));
 
