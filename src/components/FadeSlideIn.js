@@ -1,13 +1,14 @@
 // src/components/FadeSlideIn.js
 //
 // Generic "this just appeared" animation: fades in while sliding up a few
-// pixels. Used by App.js to animate screen switches (mount a new instance
-// keyed by screen id) and available to any screen/section that wants the
-// same entrance motion without hand-rolling its own Animated.Value pair.
+// pixels. Used by the navigator (src/app/navigation/AppNavigator.js) to
+// animate screen switches (each screen mounts when it gains focus) and
+// available to any screen/section that wants the same entrance motion
+// without hand-rolling its own Animated.Value pair.
 //
 // Deliberately a MOUNT animation, not a continuous transition: the calling
 // code is expected to force a remount when it wants the effect to replay
-// (e.g. <FadeSlideIn key={screen}>...), rather than this component trying
+// (e.g. by mounting it on focus, or with a key), rather than this component trying
 // to detect prop changes itself. That keeps the animation timing fully
 // predictable and keeps this component free of edge cases around
 // re-triggering mid-animation.

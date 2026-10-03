@@ -40,8 +40,9 @@ function usePersist(key, setter) {
   };
 }
 
-// SafeAreaProvider must wrap everything so useSafeAreaInsets() inside
-// AppContent (and inside GlassSheet, etc.) gets real device insets.
+// SafeAreaProvider must wrap everything so useSafeAreaInsets() in the shell
+// (src/app/navigation: ShellLayout, BottomNav) and in GlassSheet etc. gets
+// real device insets.
 // Previously SafeAreaView from 'react-native' was the root, which on
 // Android only accounts for the status bar — it does NOT account for the
 // 3-button / gesture navigation bar at the bottom. With React Native 0.81

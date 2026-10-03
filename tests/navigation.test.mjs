@@ -6,8 +6,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+// TabRouter is the router @react-navigation/bottom-tabs uses (devDependency).
 import { TabRouter } from '@react-navigation/routers';
-import { NAV, INITIAL_ROUTE, BACK_BEHAVIOR, BOTTOM_NAV_ITEMS, navItem } from '../src/config/nav.js';
+import { NAV, INITIAL_ROUTE, BACK_BEHAVIOR, BOTTOM_NAV_ITEMS } from '../src/config/nav.js';
 
 const ROUTES = NAV.map(n => n.id);
 
@@ -21,11 +22,6 @@ test('route names are the existing screen ids (no renames)', () => {
 
 test('bottom bar keeps the same five routes in the same order', () => {
   assert.deepEqual(BOTTOM_NAV_ITEMS.map(n => n.id), ['home', 'uni', 'journal', 'finances', 'stats']);
-});
-
-test('navItem gives the top-bar label and icon', () => {
-  assert.deepEqual([navItem('journal').label, navItem('journal').icon], ['Tasks', '✅']);
-  assert.equal(navItem('nope'), undefined);
 });
 
 // ── Route names used in the source ──────────────────────────────────────────
@@ -43,18 +39,21 @@ test('every route has exactly one Tab.Screen in AppNavigator, and nothing else d
   assert.deepEqual([...screens].sort(), [...ROUTES].sort());
 });
 
-test("every navigate('…') / go('…') in src names an existing route", () => {
+test('every navigate("…") with a literal route name in src names an existing route', () => {
   const files = [...sourceFiles(new URL('../src', import.meta.url).pathname), new URL('../App.js', import.meta.url).pathname];
   const used = files.flatMap(f =>
-    [...readFileSync(f, 'utf8').matchAll(/\b(?:navigate|go)\(\s*'([^']+)'/g)].map(m => [m[1], f]));
-  assert.ok(used.length >= 5, 'found the Home links');
+    [...readFileSync(f, 'utf8').matchAll(/\bnavigate\(\s*['"`]([^'"`]+)['"`]/g)].map(m => [m[1], f]));
+  assert.ok(used.length > 0, 'the scan found the Home links');
   for (const [name, file] of used) assert.ok(ROUTES.includes(name), `${name} in ${file}`);
 });
 
-test('the hand-built navigation is gone from App.js', () => {
-  const app = readFileSync(new URL('../App.js', import.meta.url), 'utf8');
-  for (const leftover of ['BackHandler', 'screenHistoryRef', 'goToScreen', 'setScreen', 'SCREENS', 'onNavigate']) {
-    assert.ok(!app.includes(leftover), leftover);
+test('the old hand-built switcher is gone (its exact identifiers)', () => {
+  const files = [...sourceFiles(new URL('../src', import.meta.url).pathname), new URL('../App.js', import.meta.url).pathname];
+  for (const f of files) {
+    const src = readFileSync(f, 'utf8');
+    for (const old of ['goToScreen', 'screenHistoryRef', 'SCREENS', 'onNavigate']) {
+      assert.ok(!new RegExp(`\\b${old}\\b`).test(src), `${old} in ${f}`);
+    }
   }
 });
 

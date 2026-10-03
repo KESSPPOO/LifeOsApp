@@ -33,8 +33,3 @@ export const BACK_BEHAVIOR = 'fullHistory';
 
 /** The routes shown in the bottom bar, in order. */
 export const BOTTOM_NAV_ITEMS = NAV.filter(n => n.bottomNav);
-
-/** The NAV entry for a route name (top-bar label and icon). */
-export function navItem(routeName) {
-  return NAV.find(n => n.id === routeName);
-}

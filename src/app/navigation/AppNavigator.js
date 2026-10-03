@@ -29,18 +29,9 @@ import JournalScreen    from '../../screens/JournalScreen';
 const Tab = createBottomTabNavigator();
 
 // Dark theme with the app's own background, so no white flashes between
-// screens.
-const THEME = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: COLORS.accent,
-    background: COLORS.bg,
-    card: COLORS.bg2,
-    text: COLORS.text,
-    border: COLORS.border,
-  },
-};
+// screens. (Headers are hidden and the tab bar is custom, so nothing else in
+// the theme is used.)
+const THEME = { ...DarkTheme, colors: { ...DarkTheme.colors, background: COLORS.bg } };
 
 // As before the migration, only the current screen is mounted: every visit
 // starts fresh and plays the FadeSlideIn entrance. (React Navigation 7 has no

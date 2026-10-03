@@ -1,9 +1,10 @@
 // src/app/navigation/ShellLayout.js
 //
-// The persistent app chrome above the screens: the top bar (☰, logo, current
-// screen) and the slide-in drawer listing every route. Moved unchanged from
-// App.js; used as the tab navigator's `layout`, so it reads the current
-// route from navigator state and switches screens with navigation.navigate.
+// The persistent app chrome above the screens: the top bar (HeaderBar: ☰,
+// logo, current screen) and the slide-in drawer listing every route. Moved
+// unchanged from App.js; used as the tab navigator's `layout`, so it reads
+// the current route from navigator state and switches screens with
+// navigation.navigate.
 // The bottom bar is BottomNav (the navigator's tabBar).
 import React, { useState, useRef } from 'react';
 import {
@@ -12,7 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../config/colors';
-import { NAV, navItem } from '../../config/nav';
+import { NAV } from '../../config/nav';
+import { HeaderBar } from '../../components/HeaderBar';
 
 const DRAWER_WIDTH = 240;
 
@@ -20,7 +22,7 @@ export function ShellLayout({ state, navigation, children }) {
   // insets.top  = status bar height (Android) / notch (iOS)
   const insets = useSafeAreaInsets();
   const current = state.routes[state.index].name;
-  const currentNav = navItem(current);
+  const currentNav = NAV.find(n => n.id === current);
 
   const [drawerMounted, setDrawerMounted] = useState(false);
   const drawerX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -48,18 +50,7 @@ export function ShellLayout({ state, navigation, children }) {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
 
-      {/* ── Top Bar ── */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={openDrawer} style={styles.menuBtn}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </TouchableOpacity>
-        <Text style={styles.logo}>
-          <Text style={{ color: COLORS.accent }}>Life</Text>OS
-        </Text>
-        <Text style={styles.screenLabel}>
-          {currentNav?.icon} {currentNav?.label}
-        </Text>
-      </View>
+      <HeaderBar title={`${currentNav?.icon} ${currentNav?.label}`} onMenuPress={openDrawer} />
 
       {/* ── Drawer ── */}
       <Modal visible={drawerMounted} animationType="none" transparent onRequestClose={closeDrawer}>
@@ -100,16 +91,7 @@ export function ShellLayout({ state, navigation, children }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
-  topBar: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, height: 52,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.bg,
-  },
-  menuBtn: { padding: 8 },
-  menuIcon: { fontSize: 20, color: COLORS.textMuted },
   logo: { fontSize: 15, fontWeight: 'bold', color: COLORS.text },
-  screenLabel: { fontSize: 13, color: COLORS.textMuted },
 
   drawerOverlay: {
     flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)',

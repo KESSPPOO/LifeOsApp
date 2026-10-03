@@ -81,7 +81,8 @@ This session fixed it (see § 12).
 | `GradeSelector` | Tied to University | Goes with the University decision |
 | `BarChart` | KEEP | Dependency-free |
 | `FadeSlideIn`, `TipBubble` | KEEP / REMOVE LATER | `TipBubble` is currently never shown |
-| `HeaderBar`, `ProgressRing` | Unused | Dead files; `ProgressRing` is the only user of `react-native-svg`. May be useful for Timewheel or Today rings, so not deleted yet |
+| `HeaderBar` | KEEP | The top bar; used by `src/app/navigation/ShellLayout.js` since Session 5 (was unused before) |
+| `ProgressRing` | Unused | Dead file; the only user of `react-native-svg`. May be useful for Timewheel or Today rings, so not deleted yet |
 
 ## 2. Existing reusable functionality (what must survive)
 

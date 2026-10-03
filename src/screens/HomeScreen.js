@@ -97,7 +97,6 @@ export default function HomeScreen({
 
   // Links to other screens (route names from src/config/nav.js).
   const navigation = useNavigation();
-  const go = (screenId) => navigation.navigate(screenId);
 
   // ── Section reorder state ──
   // The Home page's section blocks (not their inner items — those are
@@ -142,8 +141,8 @@ export default function HomeScreen({
   const sectionRenderers = {
     nextTarget: nextExam ? (
       <View>
-        <SectionHeader title="Next Target" onPress={() => go('uni')} />
-        <TouchableOpacity onPress={() => go('uni')} activeOpacity={0.8}>
+        <SectionHeader title="Next Target" onPress={() => navigation.navigate('uni')} />
+        <TouchableOpacity onPress={() => navigation.navigate('uni')} activeOpacity={0.8}>
           <Card style={styles.examCard}>
             <View style={styles.examCardHeader}>
               <Text style={styles.examName}>{nextExam.name}</Text>
@@ -157,7 +156,7 @@ export default function HomeScreen({
 
     todaysTasks: (
       <View>
-        <SectionHeader title="Tasks" onPress={() => go('journal')} />
+        <SectionHeader title="Tasks" onPress={() => navigation.navigate('journal')} />
         {homeTasks.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyText}>No pending tasks. You're clear!</Text>
@@ -194,7 +193,7 @@ export default function HomeScreen({
               );
             })}
             {remainingTasksCount > 0 && (
-              <TouchableOpacity onPress={() => go('journal')} style={styles.moreTasksRow}>
+              <TouchableOpacity onPress={() => navigation.navigate('journal')} style={styles.moreTasksRow}>
                 <Text style={styles.moreTasksText}>
                   +{remainingTasksCount} more pending task{remainingTasksCount === 1 ? '' : 's'} →
                 </Text>
@@ -207,7 +206,7 @@ export default function HomeScreen({
 
     quickLinks: (
       <View>
-        <SectionHeader title="Quick Links" onPress={() => go('links')} />
+        <SectionHeader title="Quick Links" onPress={() => navigation.navigate('links')} />
         <View style={styles.linkGrid}>
           {starredLinks.length === 0 ? (
             <Text style={styles.emptyText}>No starred links yet.</Text>
