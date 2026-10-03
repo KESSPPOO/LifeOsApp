@@ -10,12 +10,19 @@ import { COLORS } from '../config/colors';
 import { CustomAlert } from '../components/CustomAlert';
 import { DatePicker } from '../components/DatePicker';
 import { GlassSheet } from '../components/GlassSheet';
+import { useGoals, useSetGoals } from '../features/goals/store';
+import {
+  GOAL_CATEGORIES, GOAL_FILTERS as FILTERS, parseGoalNumber, addGoal, updateGoal,
+  stepGoalProgress, setGoalProgress, deleteGoal as removeGoal, isGoalExpired, filterGoals,
+} from '../features/goals/logic';
 
-const GOAL_CATEGORIES = ['Study', 'Sport', 'Finance', 'Health', 'Personal', 'Work'];
 const PRIORITY_OPTS   = ['low', 'medium', 'high'];
-const FILTERS         = ['All', 'Active', 'Completed', 'Expired'];
 
-export default function GoalsScreen({ goals, setGoals }) {
+export default function GoalsScreen() {
+  // Goals come from the goals store (features/goals), no longer as props
+  // from App.js. setGoals persists automatically.
+  const goals = useGoals();
+  const setGoals = useSetGoals();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId]       = useState(null);
   const [title, setTitle]               = useState('');
@@ -59,8 +66,8 @@ export default function GoalsScreen({ goals, setGoals }) {
 
   const saveGoal = () => {
     const t = title.trim();
-    const target = parseFloat(targetInput.replace(',', '.')) || 0;
-    const progress = parseFloat(currentProgress.replace(',', '.')) || 0;
+    const target = parseGoalNumber(targetInput);
+    const progress = parseGoalNumber(currentProgress);
 
     if (!t) {
       setAlertConfig({ title: 'Error', message: 'Please enter a title.',
@@ -71,44 +78,20 @@ export default function GoalsScreen({ goals, setGoals }) {
         buttons: [{ text: 'OK', style: 'cancel', onPress: () => setAlertConfig(null) }] }); return;
     }
 
+    const fields = {
+      title: t, description: description.trim(), target, progress,
+      category, priority, deadline: deadline.trim(),
+    };
     if (editingId) {
-      setGoals(prev => prev.map(o => o.id === editingId ? {
-        ...o,
-        title: t,
-        description: description.trim(),
-        target,
-        progress: Math.max(0, Math.min(target, progress)),
-        category, priority,
-        deadline: deadline.trim(),
-        completed: progress >= target,
-      } : o));
+      setGoals(prev => updateGoal(prev, editingId, fields));
     } else {
-      const newId = Math.max(0, ...goals.map(o => o.id || 0)) + 1;
-      setGoals(prev => [{
-        id: newId, title: t, description: description.trim(), target,
-        progress: Math.max(0, Math.min(target, progress)),
-        category, priority, deadline: deadline.trim(),
-        completed: progress >= target,
-      }, ...prev]);
+      setGoals(prev => addGoal(prev, fields));
     }
     setModalVisible(false);
   };
 
-  const updateProgress = (id, delta) => {
-    setGoals(prev => prev.map(o => {
-      if (o.id !== id) return o;
-      const newVal = Math.max(0, Math.min(o.target, o.progress + delta));
-      return { ...o, progress: newVal, completed: newVal >= o.target };
-    }));
-  };
-
-  const setDirectProgress = (id, val) => {
-    setGoals(prev => prev.map(o => {
-      if (o.id !== id) return o;
-      const v = parseFloat(val.replace(',', '.')) || 0;
-      return { ...o, progress: Math.max(0, Math.min(o.target, v)), completed: v >= o.target };
-    }));
-  };
+  const updateProgress = (id, delta) => setGoals(prev => stepGoalProgress(prev, id, delta));
+  const setDirectProgress = (id, val) => setGoals(prev => setGoalProgress(prev, id, val));
 
   const deleteGoal = (id) => {
     setAlertConfig({
@@ -117,7 +100,7 @@ export default function GoalsScreen({ goals, setGoals }) {
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setAlertConfig(null) },
         { text: 'Delete', style: 'destructive', onPress: () => {
-          setGoals(prev => prev.filter(o => o.id !== id));
+          setGoals(prev => removeGoal(prev, id));
           setAlertConfig(null); setModalVisible(false);
         }},
       ],
@@ -141,12 +124,8 @@ export default function GoalsScreen({ goals, setGoals }) {
   const priorityColor = (p) => p === 'high' ? COLORS.red : p === 'medium' ? COLORS.amber : COLORS.green;
   const priorityLabel = (p) => p === 'high' ? '🔴 High' : p === 'medium' ? '🟡 Medium' : '🟢 Low';
 
-  const filteredGoals = goals.filter(o => {
-    if (filter === 'Active') return !o.completed;
-    if (filter === 'Completed') return o.completed;
-    if (filter === 'Expired') return o.deadline && !o.completed && new Date(o.deadline) < new Date();
-    return true;
-  });
+  const now = new Date();
+  const filteredGoals = filterGoals(goals, filter, now);
 
   const activeCount = goals.filter(o => !o.completed).length;
   const completedCount = goals.filter(o => o.completed).length;
@@ -193,7 +172,7 @@ export default function GoalsScreen({ goals, setGoals }) {
         <Card><Text style={styles.emptyText}>No goals found in this category.</Text></Card>
       ) : filteredGoals.map(ob => {
         const pct = ob.target > 0 ? Math.min(100, (ob.progress / ob.target) * 100) : 0;
-        const isExpired = ob.deadline && !ob.completed && new Date(ob.deadline) < new Date();
+        const isExpired = isGoalExpired(ob, now);
         return (
           <Card key={ob.id} style={ob.completed ? styles.cardCompleted : isExpired ? styles.cardExpired : null}>
             {/* Tapping the title row opens the edit modal — this is the new

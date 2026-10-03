@@ -29,10 +29,19 @@ export const LEGACY_GROCERIES = [
   { id: 1, text: 'Fødselsdagskort', category: 'other', done: false },
 ];
 
+// `goals` exactly as GoalsScreen writes it: newest first, numbers as numbers,
+// deadline '' when unset.
+export const LEGACY_GOALS = [
+  { id: 3, title: 'Løb 10 km', description: '', target: 10, progress: 4.5, category: 'Sport', priority: 'medium', deadline: '2026-06-01', completed: false },
+  { id: 2, title: 'Spar 5000 kr', description: 'Buffer', target: 5000, progress: 5000, category: 'Finance', priority: 'high', deadline: '', completed: true },
+  { id: 1, title: 'Læs 12 bøger', description: '', target: 12, progress: 3, category: 'Personal', priority: 'low', deadline: '2026-01-31', completed: false },
+];
+
 // Demo lists the stores fall back to when a key is missing (test stand-ins
-// for INIT_JOURNAL / INIT_GROCERIES, which tests cannot import).
+// for the INIT_* seeds in src/data/seedData.js, which tests cannot import).
 export const JOURNAL_TEST_SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
 export const GROCERIES_TEST_SEED = [{ id: 900, text: 'demo item', category: 'other', done: false }];
+export const GOALS_TEST_SEED = [{ id: 900, title: 'demo goal', description: '', target: 1, progress: 0, category: 'Study', priority: 'low', deadline: '', completed: false }];
 
 // The pre-v1.4 separate habits list, migrated into journal by migration 1.
 export const LEGACY_HABITS = [
