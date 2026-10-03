@@ -16,6 +16,11 @@ export function parseGoalNumber(text) {
   return parseFloat(text.replace(',', '.')) || 0;
 }
 
+// Progress always stays within 0..target.
+function clampProgress(target, value) {
+  return Math.max(0, Math.min(target, value));
+}
+
 /**
  * fields: { title, description, target, progress, category, priority, deadline }
  * with title/description/deadline already trimmed and numbers parsed.
@@ -23,7 +28,7 @@ export function parseGoalNumber(text) {
 function goalFields({ title, description, target, progress, category, priority, deadline }) {
   return {
     title, description, target,
-    progress: Math.max(0, Math.min(target, progress)),
+    progress: clampProgress(target, progress),
     category, priority, deadline,
     completed: progress >= target,
   };
@@ -43,7 +48,7 @@ export function updateGoal(list, id, fields) {
 export function stepGoalProgress(list, id, delta) {
   return list.map(o => {
     if (o.id !== id) return o;
-    const newVal = Math.max(0, Math.min(o.target, o.progress + delta));
+    const newVal = clampProgress(o.target, o.progress + delta);
     return { ...o, progress: newVal, completed: newVal >= o.target };
   });
 }
@@ -53,7 +58,7 @@ export function setGoalProgress(list, id, text) {
   return list.map(o => {
     if (o.id !== id) return o;
     const v = parseGoalNumber(text);
-    return { ...o, progress: Math.max(0, Math.min(o.target, v)), completed: v >= o.target };
+    return { ...o, progress: clampProgress(o.target, v), completed: v >= o.target };
   });
 }
 

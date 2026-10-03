@@ -17,7 +17,8 @@ CFU credits, a degree mark out of 110, plus tasks, finances, groceries, goals,
 notes and links. The UI is English, the theme is dark only, and seeded demo
 data fills every section on first launch.
 
-**How it is wired:**
+**How it was wired at the Session 1 audit** (for the current state see
+`CLAUDE.md` and § 12):
 
 ```
 expo/AppEntry.js → App.js (SafeAreaProvider)
@@ -142,6 +143,10 @@ Ordered roughly by how much it blocks LifeOS.
      pending value) instead of queueing every full-list save.
    - Persistence failures (`persistBlocked`) are only logged; the user is not
      told. Needs a UX decision (Danish message) in a UI session.
+   - `parseGoalNumber` (comma decimals) lives in `features/goals/logic.js`.
+     When Finances' `parseFloat` comma bug is fixed, move it to
+     `src/data/helpers.js` as a shared Danish number parser instead of
+     copying it.
    - Each migrated store reads its own key with one `getItem` at boot (in
      parallel with `loadMany`). Fine for a few modules; if boot time matters
      later, let stores hydrate from a shared batched read.
@@ -465,7 +470,8 @@ the same recipe: the remaining collections, one per change (see Session 2b below
   (fixture test); the journal store's behaviour and tests are unchanged
   (tests moved to the helper where generic); `App.js` no longer holds
   groceries; validate passes. Then repeat per collection (Goals, Notes,
-  Links, Finances, Exams, profile) in small follow-ups.
+  Links, Finances, Exams, profile) in small follow-ups. *Goals, Notes and
+  Links: done in Session 4.*
 
 ### Session 3: Navigation (React Navigation)
 - **Objective:** replace the `useState` switcher and custom drawer with React

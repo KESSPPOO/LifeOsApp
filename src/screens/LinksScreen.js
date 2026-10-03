@@ -10,7 +10,7 @@ import { DraggableList } from '../components/DraggableList';
 import { GlassSheet } from '../components/GlassSheet';
 import { useLinks, useSetLinks } from '../features/links/store';
 import {
-  MAX_STARRED_LINKS as MAX_STARRED, addLink, updateLink, deleteLink as removeLink,
+  MAX_STARRED_LINKS, addLink, updateLink, deleteLink as removeLink,
   starLimitReached, toggleLinkStar,
 } from '../features/links/logic';
 
@@ -34,7 +34,7 @@ export default function LinksScreen() {
     if (starLimitReached(links, id)) {
       showAlert({
         title: 'Limit Reached',
-        message: `You can add up to ${MAX_STARRED} starred links. Remove one to add another.`,
+        message: `You can add up to ${MAX_STARRED_LINKS} starred links. Remove one to add another.`,
         buttons: [{ text: 'OK', style: 'cancel', onPress: () => setAlertConfig(null) }],
       });
       return;

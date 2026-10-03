@@ -12,7 +12,7 @@ import { DatePicker } from '../components/DatePicker';
 import { GlassSheet } from '../components/GlassSheet';
 import { useGoals, useSetGoals } from '../features/goals/store';
 import {
-  GOAL_CATEGORIES, GOAL_FILTERS as FILTERS, parseGoalNumber, addGoal, updateGoal,
+  GOAL_CATEGORIES, GOAL_FILTERS, parseGoalNumber, addGoal, updateGoal,
   stepGoalProgress, setGoalProgress, deleteGoal as removeGoal, isGoalExpired, filterGoals,
 } from '../features/goals/logic';
 
@@ -154,7 +154,7 @@ export default function GoalsScreen() {
       {/* Filters */}
       <View style={styles.filterHeaderRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillRow}>
-          {FILTERS.map(f => (
+          {GOAL_FILTERS.map(f => (
             <View key={f} style={{ marginRight: 8 }}>
               <Pill label={f} selected={filter === f} onPress={() => setFilter(f)} />
             </View>
