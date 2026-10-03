@@ -1,17 +1,16 @@
 // Tests for src/core/storage (engine + versioned migrations).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStorage, createMemoryAdapter } from '../src/core/storage/engine.js';
+import { createStorage } from '../src/core/storage/engine.js';
 import { runMigrations, SCHEMA_VERSION, MIGRATIONS } from '../src/core/storage/migrations.js';
 import { KEYS, KEY_SPECS } from '../src/core/storage/keys.js';
-import { LEGACY_JOURNAL, LEGACY_HABITS, rawStore, quietLogger } from './fixtures.mjs';
+import { LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter } from './fixtures.mjs';
 
 function setup(values = {}) {
   const logger = quietLogger();
   const adapter = createMemoryAdapter(rawStore(values));
   return { adapter, logger, storage: createStorage(adapter, { logger }) };
 }
-const parsed = (adapter, key) => JSON.parse(adapter.data[`lifeos_${key}`]);
 
 // ── Engine ──────────────────────────────────────────────────────────────────
 

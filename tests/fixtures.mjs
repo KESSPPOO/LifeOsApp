@@ -1,6 +1,7 @@
 // Shared fixtures: stored data exactly as builds before versioned storage
 // wrote it (raw AsyncStorage strings under the 'lifeos_' prefix).
 // Deterministic dates: TODAY is fixed.
+import { STORAGE_PREFIX } from '../src/core/storage/keys.js';
 
 export const TODAY = '2026-03-02';
 
@@ -29,8 +30,25 @@ export const LEGACY_HABITS = [
  *  stored string, or deliberately broken text to simulate corruption. */
 export function rawStore(values) {
   return Object.fromEntries(
-    Object.entries(values).map(([k, v]) => [`lifeos_${k}`, typeof v === 'string' ? v : JSON.stringify(v)])
+    Object.entries(values).map(([k, v]) => [STORAGE_PREFIX + k, typeof v === 'string' ? v : JSON.stringify(v)])
   );
+}
+
+/** Parsed stored value of `key` in a memory adapter. */
+export function parsed(adapter, key) {
+  return JSON.parse(adapter.data[STORAGE_PREFIX + key]);
+}
+
+/** In-memory adapter with AsyncStorage's method shapes; `data` holds raw strings. */
+export function createMemoryAdapter(data = {}) {
+  const get = (k) => (Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null);
+  return {
+    data,
+    async getItem(k) { return get(k); },
+    async setItem(k, v) { data[k] = v; },
+    async multiGet(keys) { return keys.map(k => [k, get(k)]); },
+    async multiSet(pairs) { for (const [k, v] of pairs) data[k] = v; },
+  };
 }
 
 /** A logger that records instead of printing (keeps test output clean). */

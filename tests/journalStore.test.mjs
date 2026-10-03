@@ -3,11 +3,11 @@
 // behaviour survives the move out of App.js.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStorage, createMemoryAdapter } from '../src/core/storage/engine.js';
+import { createStorage } from '../src/core/storage/engine.js';
 import { runMigrations } from '../src/core/storage/migrations.js';
 import { createJournalStore } from '../src/features/tasks/journalStore.js';
 import { groupJournal, toggleJournalEntry } from '../src/data/tasks.js';
-import { TODAY, LEGACY_JOURNAL, LEGACY_HABITS, rawStore, quietLogger } from './fixtures.mjs';
+import { TODAY, LEGACY_JOURNAL, LEGACY_HABITS, rawStore, parsed, quietLogger, createMemoryAdapter } from './fixtures.mjs';
 
 const SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
 
@@ -18,7 +18,7 @@ function setup(values = {}) {
   const store = createJournalStore({ storage, seed: SEED, logger });
   return { adapter, storage, store, logger };
 }
-const storedJournal = (adapter) => JSON.parse(adapter.data.lifeos_journal);
+const storedJournal = (adapter) => parsed(adapter, 'journal');
 
 test("hydrate loads today's stored format unchanged", async () => {
   const { store } = setup({ journal: LEGACY_JOURNAL, habitsMigrated: true });

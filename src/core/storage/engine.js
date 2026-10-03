@@ -1,8 +1,9 @@
 // src/core/storage/engine.js
 //
 // JSON persistence over an injectable key-value adapter. The app passes
-// AsyncStorage (see ./index.js); tests pass an in-memory adapter. No React or
-// React Native imports here, so this file is unit-testable with node:test.
+// AsyncStorage (see ./index.js); tests pass an in-memory one
+// (tests/fixtures.mjs). No React or React Native imports here, so this file
+// is unit-testable with node:test.
 //
 // Guarantees:
 // - Never throws. Read failures return a status/fallback, write failures
@@ -31,7 +32,9 @@ function matchesType(value, type) {
  */
 
 /**
- * @param {{ getItem: Function, setItem: Function, multiGet?: Function, multiSet?: Function }} adapter
+ * @param {{ getItem: Function, setItem: Function, multiGet: Function, multiSet: Function }} adapter
+ *   AsyncStorage's method shapes. multiSet must write all pairs together
+ *   (saveMany relies on it); AsyncStorage's native implementations do.
  */
 export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = console } = {}) {
   const full = (key) => prefix + key;
@@ -48,13 +51,9 @@ export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = conso
   async function decode(key, raw, type) {
     if (raw === null || raw === undefined) return { status: 'missing', value: undefined };
     let value;
-    try {
-      value = JSON.parse(raw);
-    } catch {
-      await backupCorrupt(key, raw);
-      return { status: 'corrupt', value: undefined };
-    }
-    if (!matchesType(value, type)) {
+    let parsed = true;
+    try { value = JSON.parse(raw); } catch { parsed = false; }
+    if (!parsed || !matchesType(value, type)) {
       await backupCorrupt(key, raw);
       return { status: 'corrupt', value: undefined };
     }
@@ -86,13 +85,10 @@ export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = conso
    */
   async function loadMany(entries) {
     let raws = null;
-    if (adapter.multiGet) {
-      try {
-        const pairs = await adapter.multiGet(entries.map(e => full(e.key)));
-        raws = new Map(pairs);
-      } catch (e) {
-        logger.warn('storage: multiGet failed, falling back to single reads', e);
-      }
+    try {
+      raws = new Map(await adapter.multiGet(entries.map(e => full(e.key))));
+    } catch (e) {
+      logger.warn('storage: multiGet failed, falling back to single reads', e);
     }
     const results = await Promise.all(entries.map(async (e) => {
       const r = raws ? await decode(e.key, raws.get(full(e.key)), e.type) : await read(e.key, e);
@@ -122,8 +118,7 @@ export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = conso
   async function saveMany(values) {
     const pairs = Object.entries(values).map(([k, v]) => [full(k), JSON.stringify(v)]);
     try {
-      if (adapter.multiSet) await adapter.multiSet(pairs);
-      else for (const [k, v] of pairs) await adapter.setItem(k, v);
+      await adapter.multiSet(pairs);
       return true;
     } catch (e) {
       logger.warn('storage: saveMany failed', e);
@@ -134,16 +129,3 @@ export function createStorage(adapter, { prefix = STORAGE_PREFIX, logger = conso
   return { read, load, loadMany, save, saveMany };
 }
 
-/**
- * Minimal in-memory adapter with the AsyncStorage method shapes. Used by
- * tests; handy for debugging too. `data` is a plain object of raw strings.
- */
-export function createMemoryAdapter(data = {}) {
-  return {
-    data,
-    async getItem(k) { return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
-    async setItem(k, v) { data[k] = v; },
-    async multiGet(keys) { return keys.map(k => [k, Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null]); },
-    async multiSet(pairs) { for (const [k, v] of pairs) data[k] = v; },
-  };
-}

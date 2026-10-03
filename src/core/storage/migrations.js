@@ -4,8 +4,8 @@
 // docs/ARCHITECTURE_DECISIONS.md).
 //
 // How to add one:
-//   1. Append { version: SCHEMA_VERSION + 1, name, up } to MIGRATIONS and
-//      bump SCHEMA_VERSION.
+//   1. Append { version: <last version + 1>, name, up } to MIGRATIONS
+//      (SCHEMA_VERSION follows automatically).
 //   2. `up(storage, context)` must be safe to run again on data it already
 //      migrated (check preconditions, never assume the version key is right),
 //      must not delete legacy keys, and should write related keys together
@@ -14,8 +14,6 @@
 //   3. Add tests in tests/storage.test.mjs, starting from the previous
 //      version's on-disk format.
 import { KEYS } from './keys.js';
-
-export const SCHEMA_VERSION = 1;
 
 // ── Migration 1 ─────────────────────────────────────────────────────────────
 // Formerly an inline one-shot block in App.js guarded by `habitsMigrated`:
@@ -72,10 +70,13 @@ async function mergeLegacyHabits(storage, { seedJournal = [] } = {}) {
   if (!ok) throw new Error('could not save merged journal');
 }
 
-/** Ordered list; versions must be 1..SCHEMA_VERSION without gaps. */
+/** Ordered list; versions must be 1, 2, 3, … without gaps. */
 export const MIGRATIONS = [
   { version: 1, name: 'merge-legacy-habits-into-journal', up: mergeLegacyHabits },
 ];
+
+/** The schema version this build writes: the last migration's version. */
+export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
 
 /**
  * Brings stored data up to SCHEMA_VERSION. Never throws.

@@ -9,5 +9,5 @@ import { createStorage } from './engine';
 
 export const appStorage = createStorage(AsyncStorage);
 
-export { KEYS, KEY_SPECS, STORAGE_PREFIX } from './keys';
-export { SCHEMA_VERSION, runMigrations } from './migrations';
+export { KEYS } from './keys';
+export { runMigrations } from './migrations';

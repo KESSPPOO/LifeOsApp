@@ -1,17 +1,11 @@
 // src/data/storage.js
 //
-// Legacy API kept for the sections App.js still owns (exams, finances, …).
-// It now delegates to the versioned storage engine in src/core/storage, so
-// there is one implementation of prefixing, parsing and error handling.
-// Behaviour is unchanged (missing/unreadable -> fallback, write errors are
-// logged and swallowed), except that an unparsable stored value is now
-// backed up to `lifeos_corrupt_<key>` before the fallback is used.
-// New code should use appStorage from src/core/storage directly.
+// Legacy write API for the sections App.js still owns (exams, finances, …).
+// Delegates to the versioned storage engine in src/core/storage, so there is
+// one implementation of prefixing, serialising and error handling (write
+// errors are logged and swallowed, as before). Reads go through
+// appStorage.loadMany in App.js. New code should use appStorage directly.
 import { appStorage } from '../core/storage';
-
-export function loadJSON(key, fallback) {
-  return appStorage.load(key, fallback);
-}
 
 export async function saveJSON(key, value) {
   await appStorage.save(key, value);
