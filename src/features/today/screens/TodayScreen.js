@@ -5,18 +5,18 @@
 // from the stored tasks, habits, goals and groceries (buildToday in
 // ../logic.js decides what goes where); nothing is invented.
 //
-// The screen mounts on every visit (AppNavigator), so the date and greeting
-// are current whenever it is opened.
-import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+// The screen mounts on every visit (AppNavigator). It also re-reads the
+// clock when the app returns to the foreground and on every tap, so a
+// screen left open overnight never shows, or writes to, yesterday.
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, AppState } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { Card } from '../../../components/Card';
 import { LinkRow } from '../../../components/LinkRow';
-import { localDateKey } from '../../../data/helpers';
 import { toggleJournalEntry } from '../../../data/tasks';
 import { t, formatDateLong } from '../../../core/i18n';
-import { isoWeekNumber } from '../../../core/time/dates';
+import { localDateKey, isoWeekNumber } from '../../../core/time/dates';
 import { useJournal, useSetJournal } from '../../tasks/store';
 import { useGoals } from '../../goals/store';
 import { useGroceries } from '../../groceries/store';
@@ -37,7 +37,11 @@ export default function TodayScreen({ userName }) {
   const goals = useGoals();
   const groceries = useGroceries();
 
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') setNow(new Date()); });
+    return () => sub.remove();
+  }, []);
   const today = localDateKey(now);
   // Tasks ticked during this visit stay visible (dimmed), so a tap can be
   // undone (same rule as the Tasks screen).
@@ -48,10 +52,14 @@ export default function TodayScreen({ userName }) {
   );
 
   const toggle = (item) => {
+    // A habit tick belongs to the real current day, even if the screen
+    // was rendered before midnight; the screen then refreshes to that day.
+    const tapTime = new Date();
     if (item.kind === 'task') {
       setKeepVisibleIds(prev => (prev.has(item.id) ? prev : new Set(prev).add(item.id)));
     }
-    setJournal(prev => toggleJournalEntry(prev, item.id, today));
+    setJournal(prev => toggleJournalEntry(prev, item.id, localDateKey(tapTime)));
+    setNow(tapTime);
   };
 
   const greeting = t(greetingKey(now.getHours()));

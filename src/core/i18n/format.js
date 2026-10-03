@@ -45,6 +45,14 @@ export function formatRelativeDay(key, today) {
   return formatDayMonth(key, today);
 }
 
+// x * 10^e done on the decimal string ('1.005e2' -> 100.5), so rounding is
+// half-up on the written value: toFixed alone rounds the binary double,
+// turning 1.005 into '1.00'.
+function shiftDecimal(x, e) {
+  const [mantissa, exp = '0'] = String(x).split('e');
+  return Number(`${mantissa}e${Number(exp) + e}`);
+}
+
 /**
  * 1234.5 -> '1.234,5'. Thousands with '.', decimals with ','; at most
  * `maxDecimals` decimals, trailing zeros dropped down to `minDecimals`.
@@ -53,7 +61,8 @@ export function formatRelativeDay(key, today) {
 export function formatNumber(value, maxDecimals = 2, minDecimals = 0) {
   const n = Number(value);
   if (value === null || value === '' || !Number.isFinite(n)) return '–';
-  const [int, frac = ''] = Math.abs(n).toFixed(maxDecimals).split('.');
+  const rounded = shiftDecimal(Math.round(shiftDecimal(Math.abs(n), maxDecimals)), -maxDecimals);
+  const [int, frac = ''] = rounded.toFixed(maxDecimals).split('.');
   const decimals = frac.replace(/0+$/, '').padEnd(minDecimals, '0');
   const negative = n < 0 && Number(int) + Number(decimals || 0) > 0;
   return `${negative ? '-' : ''}${int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}${decimals ? `,${decimals}` : ''}`;

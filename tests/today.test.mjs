@@ -74,15 +74,24 @@ test('items in NU/NÆSTE are not repeated in the overview', () => {
   assert.deepEqual(ids(d.habits), [102]);
 });
 
-test('overview: open tasks first (ranked), then done ones; capped with a remainder count', () => {
+test('overview: open tasks first (ranked, capped), then every done one; the remainder counts open tasks only', () => {
   const journal = Array.from({ length: 9 }, (_, i) => task(i + 1, TODAY, i === 8 ? 'high' : 'medium'));
   journal.push(task(20, TODAY, 'medium', true));
   const d = day(journal);
   assert.equal(d.now.id, 9);
   assert.equal(d.next.id, 1);
-  assert.equal(d.rest.length, REST_LIMIT);
-  assert.deepEqual(ids(d.rest), [2, 3, 4, 5, 6]);
-  assert.equal(d.restMore, 3); // 7, 8 and the done 20
+  assert.deepEqual(ids(d.rest), [2, 3, 4, 5, 6, 20]);
+  assert.equal(d.rest.filter(i => !i.done).length, REST_LIMIT);
+  assert.equal(d.restMore, 2); // 7 and 8; the done 20 is not "more to do"
+});
+
+test('a task ticked in NU stays on screen (undo) even when the open list is full', () => {
+  let journal = Array.from({ length: 9 }, (_, i) => task(i + 1, '2026-10-01', i === 0 ? 'high' : 'medium'));
+  journal = toggleJournalEntry(journal, 1, TODAY);
+  const d = day(journal, { keepVisibleIds: new Set([1]) });
+  assert.equal(d.now.id, 2);
+  assert.deepEqual(d.rest.at(-1), { ...d.rest.at(-1), id: 1, done: true });
+  assert.equal(d.restMore, 1); // 9
 });
 
 test('a ticked overdue task stays visible (dimmed) while keepVisibleIds holds it', () => {
@@ -127,9 +136,21 @@ test('everything for today ticked: "allDone", but NÆSTE can still show what is 
   assert.deepEqual([d.done, d.total], [2, 2]);
 });
 
-test('progress counts today\'s tasks, carried-over tasks and habits', () => {
-  const d = day([task(1, TODAY, 'medium', true), task(2, '2026-10-01'), habit(101, { [TODAY]: 1 }), habit(102)]);
-  assert.deepEqual([d.done, d.total], [2, 4]);
+test('progress is today\'s own plan (tasks dated today + habits), stable between visits', () => {
+  const journal = [task(1, TODAY, 'medium', true), task(2, '2026-10-01'), habit(101, { [TODAY]: 1 }), habit(102)];
+  const d = day(journal);
+  assert.deepEqual([d.done, d.total], [2, 3]);
+  // Ticking the carried-over task changes nothing, during the visit or after.
+  const ticked = toggleJournalEntry(journal, 2, TODAY);
+  const during = day(ticked, { keepVisibleIds: new Set([2]) });
+  const after = day(ticked);
+  assert.deepEqual([during.done, during.total], [2, 3]);
+  assert.deepEqual([after.done, after.total], [2, 3]);
+});
+
+test('only a carried-over task, now ticked: "allDone" rather than "empty"', () => {
+  const journal = toggleJournalEntry([task(1, '2026-10-01')], 1, TODAY);
+  assert.equal(day(journal, { keepVisibleIds: new Set([1]) }).state, 'allDone');
 });
 
 // ── Goals and shopping ─────────────────────────────────────────────────────
@@ -137,20 +158,29 @@ test('progress counts today\'s tasks, carried-over tasks and habits', () => {
 const goal = (id, deadline, extra = {}) =>
   ({ id, title: `Mål ${id}`, deadline, progress: 1, target: 4, completed: false, ...extra });
 
-test('goals needing attention: deadline passed or within the window, nearest first', () => {
+test('goals needing attention: due within the window first (nearest first), then recently passed', () => {
   const goals = [
-    goal(1, '2026-10-20'),                     // too far
+    goal(1, '2026-10-20'),                     // too far ahead
     goal(2, '2026-10-05'),
-    goal(3, '2026-09-30'),                     // passed
+    goal(3, '2026-09-30'),                     // passed 3 days ago
     goal(4, TODAY),                            // today: not passed
     goal(5, '2026-10-04', { completed: true }),
     goal(6, ''), goal(7, null), goal(8, 'soon'),
-    goal(9, `2026-10-${String(3 + GOAL_ATTENTION_DAYS).padStart(2, '0')}`), // last day in window
+    goal(9, '2026-10-10'),                     // last day ahead in the window
+    goal(10, '2026-09-26'),                    // last day behind in the window
+    goal(11, '2026-09-25'),                    // passed too long ago
+    goal(12, '2025-01-10'),                    // long expired
   ];
+  assert.equal(GOAL_ATTENTION_DAYS, 7);
   const result = goalsNeedingAttention(goals, TODAY);
-  assert.deepEqual(ids(result), [3, 4, 2, 9]);
-  assert.deepEqual(result.map(g => g.passed), [true, false, false, false]);
-  assert.deepEqual(ids(day([], { goals }).goals), [3, 4, 2]); // capped at 3
+  assert.deepEqual(ids(result), [4, 2, 9, 3, 10]);
+  assert.deepEqual(result.map(g => g.passed), [false, false, false, true, true]);
+  assert.deepEqual(ids(day([], { goals }).goals), [4, 2, 9]); // capped at 3
+});
+
+test('long-expired goals never crowd out a goal that is due soon', () => {
+  const goals = [goal(1, '2025-01-10'), goal(2, '2025-06-01'), goal(3, '2026-02-01'), goal(4, '2026-10-04')];
+  assert.deepEqual(ids(day([], { goals }).goals), [4]);
 });
 
 test('shopping: count of items still to buy, zero when none', () => {

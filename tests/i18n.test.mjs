@@ -52,16 +52,23 @@ test('formatNumber: Danish separators, trailing zeros dropped', () => {
   assert.equal(formatNumber(2.004), '2');
   assert.equal(formatNumber(-0.001), '0');
   assert.equal(formatNumber(1.25, 1), '1,3');
+  // Half-up on the written value, not on the binary double.
+  assert.equal(formatNumber(8.345), '8,35');
+  assert.equal(formatNumber(0.1 + 0.2), '0,3');
+  assert.equal(formatNumber(1e-7), '0');
   assert.equal(formatNumber('42'), '42');
   for (const v of [NaN, Infinity, 'abc', null, undefined, '']) assert.equal(formatNumber(v), '–', String(v));
 });
 
 test('formatMoney: DKK with two decimals and "kr."', () => {
-  assert.equal(formatMoney(0), '0,00 kr.');
-  assert.equal(formatMoney(12.5), '12,50 kr.');
-  assert.equal(formatMoney(1234.56), '1.234,56 kr.');
-  assert.equal(formatMoney(-1234.5), '-1.234,50 kr.');
-  assert.equal(formatMoney(1000000), '1.000.000,00 kr.');
+  assert.equal(formatMoney(0), '0,00\u00a0kr.');
+  assert.equal(formatMoney(12.5), '12,50\u00a0kr.');
+  assert.equal(formatMoney(1234.56), '1.234,56\u00a0kr.');
+  assert.equal(formatMoney(-1234.5), '-1.234,50\u00a0kr.');
+  assert.equal(formatMoney(1000000), '1.000.000,00\u00a0kr.');
+  assert.equal(formatMoney(1.005), '1,01\u00a0kr.');
+  assert.equal(formatMoney(-2.675), '-2,68\u00a0kr.');
+  assert.equal(formatMoney(1e15), '1.000.000.000.000.000,00\u00a0kr.');
   assert.equal(formatMoney(NaN), '–');
 });
 
