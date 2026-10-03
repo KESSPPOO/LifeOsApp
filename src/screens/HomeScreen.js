@@ -12,8 +12,9 @@ import { TipBubble } from '../components/TipBubble';
 import { DraggableList } from '../components/DraggableList';
 import { greet, todayKey, fmt, diffDays, calculateAverages } from '../data/helpers';
 import { useJournal } from '../features/tasks/store';
+import { useLinks } from '../features/links/store';
+import { starredLinks as getStarredLinks } from '../features/links/logic';
 
-const MAX_STARRED = 6;
 const HOME_TASKS_LIMIT = 6;
 const SECTION_ORDER_KEY = 'lifeos_home_section_order';
 // 'dailyRoutine' removed: Habits no longer gets its own Home module (it
@@ -48,12 +49,13 @@ function SectionHeader({ title, onPress }) {
 }
 
 export default function HomeScreen({
-  exams, finances, heatmap, links,
+  exams, finances, heatmap,
   userName, course, isFirstUse, tipsShown, onDismissTip,
   onNavigate,
 }) {
   // Tasks + habits are read from the tasks store, not passed by App.js.
   const tasks = useJournal();
+  const links = useLinks();
   const today    = todayKey();
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -88,7 +90,7 @@ export default function HomeScreen({
   const remainingTasksCount = Math.max(0, incompleteTasks.length - homeTasks.length);
 
   const currentBalance = finances.reduce((acc, f) => acc + f.amount, 0);
-  const starredLinks   = links.filter(l => l.starred).slice(0, MAX_STARRED);
+  const starredLinks   = getStarredLinks(links);
 
   // ── Onboarding Tips Logic ──
   const tipToShow = isFirstUse ? TIPS.find(t => !tipsShown.includes(t.id)) : null;

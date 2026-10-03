@@ -45,10 +45,19 @@ export const LEGACY_NOTES = [
   { id: 1, title: 'Ideer', content: 'Ny app', tags: ['idé', 'hjem'], date: '2026-01-05' },
 ];
 
+// `links` exactly as LinksScreen writes it, in the user's drag order. New
+// links got Date.now() ids, so ids are a mix of small seed ids and large ones.
+export const LEGACY_LINKS = [
+  { id: 1, name: 'Borger.dk', url: 'https://www.borger.dk', icon: '🏛', starred: true },
+  { id: 1759500000000, name: 'DR', url: 'https://www.dr.dk', icon: '📺', starred: false },
+  { id: 3, name: 'Rejseplanen', url: 'https://www.rejseplanen.dk', icon: '🚆', starred: true },
+];
+
 // Demo lists the stores fall back to when a key is missing (test stand-ins
 // for the INIT_* seeds in src/data/seedData.js, which tests cannot import).
 export const JOURNAL_TEST_SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
 export const GROCERIES_TEST_SEED = [{ id: 900, text: 'demo item', category: 'other', done: false }];
+export const LINKS_TEST_SEED = [{ id: 900, name: 'demo', url: 'https://example.com', icon: '🔗', starred: false }];
 export const NOTES_TEST_SEED = [{ id: 900, title: 'demo note', content: '', tags: [], date: '2026-01-01' }];
 export const GOALS_TEST_SEED = [{ id: 900, title: 'demo goal', description: '', target: 1, progress: 0, category: 'Study', priority: 'low', deadline: '', completed: false }];
 

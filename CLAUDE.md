@@ -29,7 +29,7 @@ prototype.**
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
 | Navigation | Hand-rolled `useState` screen switcher plus a custom drawer in `App.js`. `@react-navigation/*` is installed but **not used yet** |
-| State | **Mid-migration (ADR-001, ADR-003).** Migrated modules (tasks/habits = `journal`, groceries) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. All other collections still live in `App.js` (`useState`) and are passed as props, until each is migrated with the template in ADR-003 |
+| State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
 | Auth (optional) | Firebase Auth (anonymous plus Google One Tap). Disabled unless `EXPO_PUBLIC_FIREBASE_API_KEY` is set; without it the onboarding Google button is hidden. Nothing is synced |
@@ -56,6 +56,10 @@ src/
                        (domain logic in src/data/tasks.js)
   features/groceries/  store.js: singleton + useGroceries / useSetGroceries;
                        logic.js: pure list operations (add/toggle/delete/filter)
+  features/goals/      store.js + logic.js (progress, completion, expiry, filters)
+  features/notes/      store.js + logic.js (add/edit/delete, tag collection)
+  features/links/      store.js + logic.js (add/edit/delete, star limit, URL
+                       normalisation); also read by HomeScreen (Quick Links)
   config/              colors.js (theme tokens), nav.js (screen registry), firebase.js
   data/                Pure logic and persistence; no React in here
     helpers.js         Dates (localDateKey!), grade math, formatting

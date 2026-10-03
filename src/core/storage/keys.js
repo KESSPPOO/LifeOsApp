@@ -35,6 +35,9 @@ export const KEY_SPECS = Object.freeze({
   // ── Notes (migrated to features/notes) ────────────────────────────────
   notes:              { type: 'array',   owner: 'features/notes', description: "Notes in the user's order: { id, title, content, tags: string[], date: 'YYYY-MM-DD' }." },
 
+  // ── Links (migrated to features/links; also read by Home Quick Links) ──
+  links:              { type: 'array',   owner: 'features/links', description: "Bookmarks in the user's order: { id, name, url, icon, starred } (at most 6 starred; shown on Home)." },
+
   // ── Still owned by App.js (not migrated yet) ──────────────────────────
   isFirstUse:         { type: 'boolean', owner: 'App.js', description: 'true until onboarding completes.' },
   userName:           { type: 'string',  owner: 'App.js', description: 'Name from onboarding.' },
@@ -43,7 +46,6 @@ export const KEY_SPECS = Object.freeze({
   tipsShown:          { type: 'array',   owner: 'App.js', description: 'Ids of dismissed Home tips.' },
   exams:              { type: 'array',   owner: 'App.js', description: 'University exams.' },
   finances:           { type: 'array',   owner: 'App.js', description: 'Income/expense transactions.' },
-  links:              { type: 'array',   owner: 'App.js', description: 'Bookmarks (starred = Home quick links).' },
   heatmap:            { type: 'object',  owner: 'App.js', description: 'Study hours per YYYY-MM-DD (dead timer feature; still read by Home/Stats).' },
   loggedSeconds:      { type: 'number',  owner: 'App.js', description: 'Total study-timer seconds (dead timer feature).' },
   home_section_order: { type: 'array',   owner: 'HomeScreen', description: 'Order of Home sections. Read/written directly via AsyncStorage (legacy).' },

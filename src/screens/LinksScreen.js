@@ -8,10 +8,17 @@ import { Card } from '../components/Card';
 import { CustomAlert } from '../components/CustomAlert';
 import { DraggableList } from '../components/DraggableList';
 import { GlassSheet } from '../components/GlassSheet';
+import { useLinks, useSetLinks } from '../features/links/store';
+import {
+  MAX_STARRED_LINKS as MAX_STARRED, addLink, updateLink, deleteLink as removeLink,
+  starLimitReached, toggleLinkStar,
+} from '../features/links/logic';
 
-const MAX_STARRED = 6;
-
-export default function LinksScreen({ links, setLinks }) {
+export default function LinksScreen() {
+  // Links come from the links store (features/links), no longer as props
+  // from App.js. setLinks persists automatically.
+  const links = useLinks();
+  const setLinks = useSetLinks();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId]       = useState(null);
   const [formName, setFormName]         = useState('');
@@ -22,12 +29,9 @@ export default function LinksScreen({ links, setLinks }) {
   const showAlert = (cfg) => setAlertConfig(cfg);
   const closeModal = () => setModalVisible(false);
 
-  const starredCount = links.filter(l => l.starred).length;
-
   const toggleStarred = (id) => {
-    const link = links.find(l => l.id === id);
-    if (!link) return;
-    if (!link.starred && starredCount >= MAX_STARRED) {
+    if (!links.some(l => l.id === id)) return;
+    if (starLimitReached(links, id)) {
       showAlert({
         title: 'Limit Reached',
         message: `You can add up to ${MAX_STARRED} starred links. Remove one to add another.`,
@@ -35,7 +39,7 @@ export default function LinksScreen({ links, setLinks }) {
       });
       return;
     }
-    setLinks(prev => prev.map(l => l.id === id ? { ...l, starred: !l.starred } : l));
+    setLinks(prev => toggleLinkStar(prev, id));
   };
 
   const deleteLink = (id, name) => {
@@ -45,7 +49,7 @@ export default function LinksScreen({ links, setLinks }) {
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setAlertConfig(null) },
         { text: 'Delete', style: 'destructive', onPress: () => {
-            setLinks(prev => prev.filter(l => l.id !== id));
+            setLinks(prev => removeLink(prev, id));
             setAlertConfig(null); setModalVisible(false);
           }
         },
@@ -90,18 +94,12 @@ export default function LinksScreen({ links, setLinks }) {
         buttons: [{ text: 'OK', style: 'cancel', onPress: () => setAlertConfig(null) }] });
       return;
     }
-    let validUrl = formUrl.trim();
-    if (!validUrl.startsWith('http')) validUrl = 'https://' + validUrl;
-
+    const fields = { name: formName, url: formUrl, icon: formIcon };
     if (editingId) {
-      setLinks(prev => prev.map(l => l.id === editingId ? {
-        ...l, name: formName.trim(), url: validUrl, icon: formIcon.trim() || '🔗',
-      } : l));
+      setLinks(prev => updateLink(prev, editingId, fields));
     } else {
-      setLinks(prev => [...prev, {
-        id: Date.now(), name: formName.trim(), url: validUrl,
-        icon: formIcon.trim() || '🔗', starred: false,
-      }]);
+      const id = Date.now();
+      setLinks(prev => addLink(prev, fields, id));
     }
     setModalVisible(false);
   };

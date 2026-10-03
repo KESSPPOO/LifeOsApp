@@ -8,8 +8,8 @@ import assert from 'node:assert/strict';
 import { KEYS } from '../src/core/storage/keys.js';
 import { createPersistedListStore } from '../src/core/state/persistedListStore.js';
 import {
-  LEGACY_JOURNAL, LEGACY_GROCERIES, LEGACY_GOALS, LEGACY_NOTES,
-  JOURNAL_TEST_SEED, GROCERIES_TEST_SEED, GOALS_TEST_SEED, NOTES_TEST_SEED,
+  LEGACY_JOURNAL, LEGACY_GROCERIES, LEGACY_GOALS, LEGACY_NOTES, LEGACY_LINKS,
+  JOURNAL_TEST_SEED, GROCERIES_TEST_SEED, GOALS_TEST_SEED, NOTES_TEST_SEED, LINKS_TEST_SEED,
   parsed, raw, setupListStore, failReadsOf, failWritesOf,
 } from './fixtures.mjs';
 
@@ -18,6 +18,7 @@ const MODULES = [
   { name: 'groceries', key: KEYS.groceries, stored: LEGACY_GROCERIES, seed: GROCERIES_TEST_SEED },
   { name: 'goals', key: KEYS.goals, stored: LEGACY_GOALS, seed: GOALS_TEST_SEED },
   { name: 'notes', key: KEYS.notes, stored: LEGACY_NOTES, seed: NOTES_TEST_SEED },
+  { name: 'links', key: KEYS.links, stored: LEGACY_LINKS, seed: LINKS_TEST_SEED },
 ];
 
 for (const { name, key, stored, seed } of MODULES) {
