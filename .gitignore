@@ -14,3 +14,8 @@ npm-debug.*
 google-services.json
 
 google-services.json
+
+# Env files (e.g. EXPO_PUBLIC_FIREBASE_API_KEY) — never commit; use EAS env vars for builds
+.env
+.env.*
+!.env.example

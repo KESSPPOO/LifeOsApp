@@ -7,7 +7,11 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "prebuild": "expo prebuild"
+    "prebuild": "expo prebuild",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test",
+    "check:bundle": "expo export --platform android --output-dir .expo/check-export",
+    "doctor": "npx expo-doctor",
+    "validate": "npm test && npm run check:bundle"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

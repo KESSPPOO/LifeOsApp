@@ -83,7 +83,10 @@ function AppContent() {
   // immediately start an anonymous session: this is the already-agreed
   // "jump in, decide later" pattern. The user doesn't choose anything,
   // but has a valid Firestore UID from the very first moment regardless.
+  // `auth` is null when Firebase isn't configured (see config/firebase.js):
+  // the app then simply runs local-only, with no auth session at all.
   useEffect(() => {
+    if (!auth) return undefined;
     const unsub = onAuthStateChanged(auth, (u) => {
       setAuthUser(u);
       if (!u) signInAnonymously(auth).catch(() => {});
@@ -258,6 +261,9 @@ function AppContent() {
   // instead of handling the alert here — the caller decides how to
   // present it, same principle as every other alertConfig in the project.
   const signInWithGoogle = async () => {
+    // Thrown, not returned: OnboardingScreen's catch already turns any
+    // failure into "continue by entering your name manually".
+    if (!auth) throw new Error('Firebase is not configured');
     await GoogleOneTapSignIn.checkPlayServices();
     let response = await GoogleOneTapSignIn.signIn();
     if (isNoSavedCredentialFoundResponse(response)) {
@@ -348,6 +354,7 @@ function AppContent() {
     return (
       <OnboardingScreen
         onComplete={handleOnboardingComplete}
+        googleSignInAvailable={!!auth}
         onGoogleSignIn={signInWithGoogle}
         onResolveConflictKeepGoogleAccount={resolveConflictKeepGoogleAccount}
         onResolveConflictKeepThisDevice={resolveConflictKeepThisDevice}

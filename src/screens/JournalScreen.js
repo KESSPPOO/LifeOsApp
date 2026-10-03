@@ -45,9 +45,9 @@ import { CustomAlert } from '../components/CustomAlert';
 import { DatePicker } from '../components/DatePicker';
 import { DraggableList } from '../components/DraggableList';
 import { GlassSheet } from '../components/GlassSheet';
-import { todayKey, localDateKey, diffDays, last7Days } from '../data/helpers';
+import { todayKey, last7Days } from '../data/helpers';
+import { TASK_SECTIONS, computeStreak, groupJournal } from '../data/tasks';
 
-const SECTIONS = ['Today', 'Upcoming', 'Habits', 'No Date'];
 const CHECK_HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };
 const DAY_HIT_SLOP   = { top: 8, bottom: 8, left: 4, right: 4 };
 
@@ -67,6 +67,10 @@ export default function JournalScreen({ journal, setJournal }) {
   const [formRecurring, setFormRecurring] = useState(false);
   const [formIcon, setFormIcon]         = useState('🌟');
   const [alertConfig, setAlertConfig]   = useState(null);
+  // One-off tasks toggled during this visit to the screen. Lets a task
+  // ticked off in "Overdue" stay visible (dimmed) so the tap can be undone;
+  // see groupJournal in data/tasks.js. Not persisted on purpose.
+  const [toggledIds, setToggledIds]     = useState(() => new Set());
 
   const composerInputRef = useRef(null);
   const today = todayKey();
@@ -149,6 +153,7 @@ export default function JournalScreen({ journal, setJournal }) {
   // `history` and recomputes the streak — same gesture (tap the
   // check/circle), different meaning depending on the item type.
   const toggleEntry = (id) => {
+    setToggledIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
     setJournal(prev => prev.map(t => {
       if (t.id !== id) return t;
       if (!t.recurring) return { ...t, done: !t.done };
@@ -157,15 +162,7 @@ export default function JournalScreen({ journal, setJournal }) {
       if (history[today]) delete history[today];
       else history[today] = 1;
 
-      let streak = 0;
-      const d = new Date();
-      while (true) {
-        const dateStr = localDateKey(d);
-        if (history[dateStr]) { streak++; d.setDate(d.getDate() - 1); }
-        else if (dateStr === today) { d.setDate(d.getDate() - 1); }
-        else break;
-      }
-      return { ...t, history, streak };
+      return { ...t, history, streak: computeStreak(history, today) };
     }));
   };
 
@@ -203,27 +200,8 @@ export default function JournalScreen({ journal, setJournal }) {
   const priorityColor = (p) => p === 'high' ? 'red' : p === 'medium' ? 'amber' : 'green';
 
   // ── Grouping: Microsoft To Do-style sections instead of one flat list ───
-  const grouped = useMemo(() => {
-    const habits = journal.filter(t => t.recurring);
-    const oneTime = journal.filter(t => !t.recurring);
-
-    const todayItems    = oneTime.filter(t => t.date === today);
-    const upcomingItems = oneTime.filter(t => t.date && t.date > today);
-    const noDateItems   = oneTime.filter(t => !t.date);
-
-    // Within each section: not-done first, done items sink to the bottom
-    // and stay visible but dimmed — this mirrors Microsoft To Do, where
-    // completing something doesn't make it vanish, it just moves down and
-    // fades, so you can still see what you got done today.
-    const sortDone = (list) => [...list].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
-
-    return {
-      Today: sortDone(todayItems),
-      Upcoming: upcomingItems.sort((a, b) => a.date.localeCompare(b.date)),
-      Habits: habits,
-      'No Date': sortDone(noDateItems),
-    };
-  }, [journal, today]);
+  // (pure logic lives in data/tasks.js so it can be unit-tested)
+  const grouped = useMemo(() => groupJournal(journal, today, toggledIds), [journal, today, toggledIds]);
 
   const handleReorderSection = (sectionItems, reordered) => {
     setJournal(prev => {
@@ -256,7 +234,7 @@ export default function JournalScreen({ journal, setJournal }) {
           </View>
         </View>
 
-        {SECTIONS.map(section => {
+        {TASK_SECTIONS.map(section => {
           const items = grouped[section];
           if (!items || items.length === 0) return null;
           const isHabitSection = section === 'Habits';

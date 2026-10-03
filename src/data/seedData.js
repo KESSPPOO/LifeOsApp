@@ -1,4 +1,5 @@
 import { todayKey, localDateKey } from './helpers';
+import { computeStreak } from './tasks';
 
 // 'YYYY-MM-DD' that is `n` days from today (negative = past, 0 = today,
 // positive = future). Always via localDateKey, never toISOString() — see
@@ -121,21 +122,9 @@ function daysAgo(n) {
   return dateOffset(-n);
 }
 
-// Mirrors the exact streak algorithm in JournalScreen.toggleEntry, so a
-// seeded streak is consistent with what a real tap on today's circle
-// would produce — no weird jump on the first interaction.
-function computeStreak(history, today) {
-  let streak = 0;
-  const d = new Date();
-  while (true) {
-    const dateStr = localDateKey(d);
-    if (history[dateStr]) { streak++; d.setDate(d.getDate() - 1); }
-    else if (dateStr === today) { d.setDate(d.getDate() - 1); }
-    else break;
-  }
-  return streak;
-}
-
+// computeStreak (data/tasks.js) is the same function JournalScreen uses
+// when a habit is toggled, so a seeded streak is consistent with what a
+// real tap on today's circle would produce — no jump on first interaction.
 function buildHabit({ id, text, icon, hits }) {
   const history = {};
   hits.forEach(n => { history[daysAgo(n)] = 1; });

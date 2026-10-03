@@ -8,7 +8,8 @@ import { COLORS } from '../config/colors';
 import { CustomAlert } from '../components/CustomAlert';
 
 export default function OnboardingScreen({
-  onComplete, 
+  onComplete,
+  googleSignInAvailable = true,
   onGoogleSignIn,
   onResolveConflictKeepGoogleAccount, 
   onResolveConflictKeepThisDevice,
@@ -172,21 +173,27 @@ export default function OnboardingScreen({
               onSubmitEditing={canNext() ? next : undefined}
             />
 
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {/* Hidden when Firebase isn't configured (no API key at bundle
+                time) — the sign-in could only ever fail in that case. */}
+            {googleSignInAvailable && (
+              <>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            <TouchableOpacity
-              style={styles.googleBtn}
-              onPress={handleGoogleSignIn}
-              disabled={googleLoading}
-            >
-              <Text style={styles.googleBtnText}>
-                {googleLoading ? 'Connecting…' : 'Continue with Google'}
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.googleBtn}
+                  onPress={handleGoogleSignIn}
+                  disabled={googleLoading}
+                >
+                  <Text style={styles.googleBtnText}>
+                    {googleLoading ? 'Connecting…' : 'Continue with Google'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
 
