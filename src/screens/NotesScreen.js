@@ -11,8 +11,14 @@ import { TagInput } from '../components/TagInput';
 import { DraggableList } from '../components/DraggableList';
 import { GlassSheet } from '../components/GlassSheet';
 import { todayKey } from '../data/helpers';
+import { useNotes, useSetNotes } from '../features/notes/store';
+import { collectTags, addNote, updateNote, deleteNote as removeNote } from '../features/notes/logic';
 
-export default function NotesScreen({ notes, setNotes }) {
+export default function NotesScreen() {
+  // Notes come from the notes store (features/notes), no longer as props
+  // from App.js. setNotes persists automatically.
+  const notes = useNotes();
+  const setNotes = useSetNotes();
   const [modalVisible,  setModalVisible]  = useState(false);
   const [editingId,     setEditingId]     = useState(null);
   const [formTitle,     setFormTitle]     = useState('');
@@ -25,11 +31,7 @@ export default function NotesScreen({ notes, setNotes }) {
 
   // Every tag used across all existing notes, deduplicated — this is what
   // TagInput suggests from while typing a new tag.
-  const allKnownTags = useMemo(() => {
-    const set = new Set();
-    notes.forEach(n => (n.tags || []).forEach(t => set.add(t)));
-    return Array.from(set).sort();
-  }, [notes]);
+  const allKnownTags = useMemo(() => collectTags(notes), [notes]);
 
   const openAddModal = () => {
     setEditingId(null);
@@ -54,16 +56,12 @@ export default function NotesScreen({ notes, setNotes }) {
       return;
     }
 
+    const fields = { title: formTitle.trim(), content: formContent.trim(), tags: formTags };
     if (editingId) {
-      setNotes(prev => prev.map(n => n.id === editingId ? {
-        ...n, title: formTitle.trim(), content: formContent.trim(), tags: formTags,
-      } : n));
+      setNotes(prev => updateNote(prev, editingId, fields));
     } else {
-      const newId = Math.max(0, ...notes.map(n => n.id || 0)) + 1;
-      setNotes(prev => [{
-        id: newId, title: formTitle.trim(), content: formContent.trim(),
-        tags: formTags, date: todayKey(),
-      }, ...prev]);
+      const date = todayKey();
+      setNotes(prev => addNote(prev, fields, date));
     }
     setModalVisible(false);
   };
@@ -75,7 +73,7 @@ export default function NotesScreen({ notes, setNotes }) {
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setAlertConfig(null) },
         { text: 'Delete', style: 'destructive', onPress: () => {
-            setNotes(prev => prev.filter(n => n.id !== id));
+            setNotes(prev => removeNote(prev, id));
             setAlertConfig(null); setModalVisible(false);
           }
         },

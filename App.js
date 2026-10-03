@@ -15,11 +15,12 @@ import { appStorage, runMigrations, KEYS } from './src/core/storage';
 import { hydrateJournal, JOURNAL_SEED } from './src/features/tasks/store';
 import { hydrateGroceries } from './src/features/groceries/store';
 import { hydrateGoals } from './src/features/goals/store';
+import { hydrateNotes } from './src/features/notes/store';
 import { ErrorBoundary } from './src/app/ErrorBoundary';
 import { FadeSlideIn } from './src/components/FadeSlideIn';
 import {
   INIT_EXAMS, INIT_FINANCES,
-  INIT_NOTES, INIT_LINKS,
+  INIT_LINKS,
 } from './src/data/seedData';
 import { auth } from './src/config/firebase';
 import {
@@ -118,7 +119,6 @@ function AppContent() {
   const [tipsShown,    setTipsShown]    = useState([]);
   const [exams,        setExams]        = useState([]);
   const [finances,     setFinances]     = useState([]);
-  const [notes,        setNotes]        = useState([]);
   // Migrated modules (src/features/*) are NOT held here: each owns a store
   // that screens read via hooks (ADR-003).
   const [links,        setLinks]        = useState([]);
@@ -193,7 +193,6 @@ function AppContent() {
             { key: KEYS.tipsShown,     fallback: [] },
             { key: KEYS.exams,         fallback: INIT_EXAMS },
             { key: KEYS.finances,      fallback: INIT_FINANCES },
-            { key: KEYS.notes,         fallback: INIT_NOTES },
             { key: KEYS.links,         fallback: INIT_LINKS },
             { key: KEYS.heatmap,       fallback: {} },
             { key: KEYS.loggedSeconds, fallback: 0 },
@@ -201,6 +200,7 @@ function AppContent() {
           hydrateJournal(),
           hydrateGroceries(),
           hydrateGoals(),
+          hydrateNotes(),
         ]);
         setIsFirstUse(data.isFirstUse);
         setUserName(data.userName);
@@ -209,7 +209,6 @@ function AppContent() {
         setTipsShown(data.tipsShown);
         setExams(data.exams);
         setFinances(data.finances);
-        setNotes(data.notes);
         setLinks(data.links);
         setHeatmap(data.heatmap);
         setLogged(data.loggedSeconds);
@@ -320,7 +319,6 @@ function AppContent() {
 
   const pExams      = usePersist(KEYS.exams,      setExams);
   const pFinances   = usePersist(KEYS.finances,   setFinances);
-  const pNotes      = usePersist(KEYS.notes,      setNotes);
   const pLinks      = usePersist(KEYS.links,      setLinks);
 
   const timerProps = {
@@ -386,7 +384,7 @@ function AppContent() {
     finances:  <FinancesScreen  finances={finances}   setFinances={pFinances}  />,
     groceries: <GroceriesScreen />,
     goals:     <GoalsScreen />,
-    notes:     <NotesScreen     notes={notes}         setNotes={pNotes}        />,
+    notes:     <NotesScreen />,
     links:     <LinksScreen     links={links}         setLinks={pLinks}        />,
     journal:   <JournalScreen />,
     stats:     <StatsScreen

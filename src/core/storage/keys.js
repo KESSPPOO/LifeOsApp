@@ -32,6 +32,9 @@ export const KEY_SPECS = Object.freeze({
   // ── Goals (migrated to features/goals) ────────────────────────────────
   goals:              { type: 'array',   owner: 'features/goals', description: 'Numeric goals: { id, title, description, target, progress, category, priority, deadline, completed }.' },
 
+  // ── Notes (migrated to features/notes) ────────────────────────────────
+  notes:              { type: 'array',   owner: 'features/notes', description: "Notes in the user's order: { id, title, content, tags: string[], date: 'YYYY-MM-DD' }." },
+
   // ── Still owned by App.js (not migrated yet) ──────────────────────────
   isFirstUse:         { type: 'boolean', owner: 'App.js', description: 'true until onboarding completes.' },
   userName:           { type: 'string',  owner: 'App.js', description: 'Name from onboarding.' },
@@ -40,7 +43,6 @@ export const KEY_SPECS = Object.freeze({
   tipsShown:          { type: 'array',   owner: 'App.js', description: 'Ids of dismissed Home tips.' },
   exams:              { type: 'array',   owner: 'App.js', description: 'University exams.' },
   finances:           { type: 'array',   owner: 'App.js', description: 'Income/expense transactions.' },
-  notes:              { type: 'array',   owner: 'App.js', description: 'Notes with tags.' },
   links:              { type: 'array',   owner: 'App.js', description: 'Bookmarks (starred = Home quick links).' },
   heatmap:            { type: 'object',  owner: 'App.js', description: 'Study hours per YYYY-MM-DD (dead timer feature; still read by Home/Stats).' },
   loggedSeconds:      { type: 'number',  owner: 'App.js', description: 'Total study-timer seconds (dead timer feature).' },

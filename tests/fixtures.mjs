@@ -37,10 +37,19 @@ export const LEGACY_GOALS = [
   { id: 1, title: 'Læs 12 bøger', description: '', target: 12, progress: 3, category: 'Personal', priority: 'low', deadline: '2026-01-31', completed: false },
 ];
 
+// `notes` exactly as NotesScreen writes it, in the user's drag order (not
+// sorted by id or date), including a note without tags.
+export const LEGACY_NOTES = [
+  { id: 2, title: 'Indkøb', content: 'Husk æg og mælk', tags: ['hjem', 'liste'], date: '2026-02-20' },
+  { id: 3, title: '', content: 'Kun indhold', tags: [], date: '2026-03-01' },
+  { id: 1, title: 'Ideer', content: 'Ny app', tags: ['idé', 'hjem'], date: '2026-01-05' },
+];
+
 // Demo lists the stores fall back to when a key is missing (test stand-ins
 // for the INIT_* seeds in src/data/seedData.js, which tests cannot import).
 export const JOURNAL_TEST_SEED = [{ id: 900, text: 'demo task', recurring: false, date: null, done: false }];
 export const GROCERIES_TEST_SEED = [{ id: 900, text: 'demo item', category: 'other', done: false }];
+export const NOTES_TEST_SEED = [{ id: 900, title: 'demo note', content: '', tags: [], date: '2026-01-01' }];
 export const GOALS_TEST_SEED = [{ id: 900, title: 'demo goal', description: '', target: 1, progress: 0, category: 'Study', priority: 'low', deadline: '', completed: false }];
 
 // The pre-v1.4 separate habits list, migrated into journal by migration 1.
