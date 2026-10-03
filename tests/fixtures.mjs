@@ -4,6 +4,21 @@
 import { STORAGE_PREFIX, corruptBackupKey } from '../src/core/storage/keys.js';
 import { createStorage } from '../src/core/storage/engine.js';
 import { createPersistedListStore } from '../src/core/state/persistedListStore.js';
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Absolute path of a repo file, relative to tests/. fileURLToPath, not
+ *  URL.pathname: works on Windows and in paths with spaces/æøå. */
+export const repoPath = (rel) => fileURLToPath(new URL(rel, import.meta.url));
+
+/** Every .js file under `dir`, recursively (for source scans). */
+export function sourceFiles(dir) {
+  return readdirSync(dir).flatMap(f => {
+    const p = join(dir, f);
+    return statSync(p).isDirectory() ? sourceFiles(p) : p.endsWith('.js') ? [p] : [];
+  });
+}
 
 export const TODAY = '2026-03-02';
 

@@ -1,20 +1,10 @@
 // src/data/helpers.js
 
-// Builds a 'YYYY-MM-DD' key from a Date's LOCAL year/month/day — never use
-// toISOString() for this. toISOString() always converts to UTC first, so
-// for any timezone ahead of UTC (Italy is UTC+1/+2), calling it between
-// midnight and 1-2am local time silently returns YESTERDAY's date, and
-// calling it on local midnight of a specific day (e.g. the 1st of a month)
-// can shift the result back into the previous month entirely. Every place
-// in this app that turns a Date into a 'YYYY-MM-DD' or 'YYYY-MM' key goes
-// through this function instead, so there's exactly one place to get the
-// timezone handling right.
-export function localDateKey(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+// localDateKey lives in src/core/time/dates.js (with the reason never to use
+// toISOString() for calendar dates); re-exported here for existing callers.
+import { localDateKey } from '../core/time/dates.js';
+
+export { localDateKey };
 
 export function todayKey() {
   return localDateKey(new Date());

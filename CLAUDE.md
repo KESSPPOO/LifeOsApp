@@ -52,7 +52,8 @@ src/
                        MoreScreen (Mere: every non-tab screen, grouped)
   core/i18n/           da.js (Danish strings) + t() (index.js); format.js: da-DK dates,
                        numbers, DKK (hand-written, not Intl: same output on every device)
-  core/time/           dates.js: local 'YYYY-MM-DD' arithmetic, Monday-first weeks, ISO week
+  core/time/           dates.js: localDateKey (home of it) + local 'YYYY-MM-DD' arithmetic,
+                       Monday-first weeks, ISO week
   core/storage/        Versioned persistence: engine.js (adapter-agnostic, never throws),
                        keys.js (documented key registry), migrations.js (SCHEMA_VERSION +
                        ordered migrations), index.js (appStorage = engine over AsyncStorage)
@@ -71,11 +72,11 @@ src/
   config/              colors.js (theme tokens), nav.js (routes: names, Danish labels, icons,
                        tabs, Mere sections, initial route, back behaviour), firebase.js
   data/                Pure logic and persistence; no React in here
-    helpers.js         Dates (localDateKey!), grade math, formatting
+    helpers.js         Legacy helpers: re-exports localDateKey, todayKey, grade math, en-US fmt
     tasks.js           Task/habit grouping and streaks (unit-tested)
     storage.js         saveJSON (legacy write path for App.js-owned sections; delegates to core/storage)
     seedData.js        Demo data that fills an empty install
-  components/          Shared UI (Card, Pill, StatCard, DatePicker, GlassSheet, CustomAlert, DraggableList, …)
+  components/          Shared UI (Card, Pill, StatCard, LinkRow, DatePicker, GlassSheet, CustomAlert, DraggableList, …)
   screens/             One file per screen; holds local UI state and calls the setters passed in
 tests/                 node:test unit tests (data logic, storage, migrations, stores) + fixtures.mjs
 docs/LIFEOS_PLAN.md    Audit, target architecture, roadmap

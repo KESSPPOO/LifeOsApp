@@ -10,7 +10,7 @@ import React from 'react';
 import { View, StatusBar, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../config/colors';
-import { NAV, MORE_ROUTE, tabFor } from '../../config/nav';
+import { NAV, MORE_ROUTE } from '../../config/nav';
 import { HeaderBar } from '../../components/HeaderBar';
 
 export function ShellLayout({ state, navigation, children }) {
@@ -31,7 +31,7 @@ export function ShellLayout({ state, navigation, children }) {
     // bar here, bottom bar in BottomNav) rather than padding the whole root.
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
-      <HeaderBar title={currentNav?.label} onBack={tabFor(current) === current ? undefined : goBack} />
+      <HeaderBar title={currentNav?.label} onBack={currentNav?.tab ? undefined : goBack} />
       {/* ── Screens + bottom bar (rendered by the navigator) ── */}
       <View style={styles.content}>{children}</View>
     </View>

@@ -4,18 +4,15 @@
 // the app configures it (BACK_BEHAVIOR, INITIAL_ROUTE, NAV).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 // TabRouter is the router @react-navigation/bottom-tabs uses (devDependency).
 import { TabRouter } from '@react-navigation/routers';
 import {
-  NAV, INITIAL_ROUTE, BACK_BEHAVIOR, TAB_ITEMS, MORE_ROUTE, MORE_SECTIONS, tabFor,
+  NAV, INITIAL_ROUTE, BACK_BEHAVIOR, TAB_ITEMS, MORE_SECTIONS, tabFor,
 } from '../src/config/nav.js';
+import { repoPath, sourceFiles } from './fixtures.mjs';
 
 const ROUTES = NAV.map(n => n.id);
-// fileURLToPath, not URL.pathname: works on Windows and in paths with spaces/æøå.
-const path = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 
 // ── Route definitions ───────────────────────────────────────────────────────
 
@@ -34,7 +31,6 @@ test('the app starts on I dag', () => {
 test('bottom bar is I dag · Plan · Mere (ADR-005)', () => {
   assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'journal', 'more']);
   assert.deepEqual(TAB_ITEMS.map(n => n.label), ['I dag', 'Plan', 'Mere']);
-  assert.equal(MORE_ROUTE, 'more');
 });
 
 test('University, Finances, Links and the old Home are not primary', () => {
@@ -64,21 +60,14 @@ test('every route has a Danish label and an icon; tabs highlight themselves', ()
 
 // ── Route names used in the source ──────────────────────────────────────────
 
-function sourceFiles(dir) {
-  return readdirSync(dir).flatMap(f => {
-    const p = join(dir, f);
-    return statSync(p).isDirectory() ? sourceFiles(p) : p.endsWith('.js') ? [p] : [];
-  });
-}
-
 test('every route has exactly one Tab.Screen in AppNavigator, and nothing else does', () => {
-  const src = readFileSync(path('../src/app/navigation/AppNavigator.js'), 'utf8');
+  const src = readFileSync(repoPath('../src/app/navigation/AppNavigator.js'), 'utf8');
   const screens = [...src.matchAll(/<Tab\.Screen name="(\w+)"/g)].map(m => m[1]);
   assert.deepEqual([...screens].sort(), [...ROUTES].sort());
 });
 
 test('every navigate("…") with a literal route name in src names an existing route', () => {
-  const files = [...sourceFiles(path('../src')), path('../App.js')];
+  const files = [...sourceFiles(repoPath('../src')), repoPath('../App.js')];
   const used = files.flatMap(f =>
     [...readFileSync(f, 'utf8').matchAll(/\bnavigate\(\s*['"`]([^'"`]+)['"`]/g)].map(m => [m[1], f]));
   assert.ok(used.length > 0, 'the scan found the I dag and Home links');
@@ -86,7 +75,7 @@ test('every navigate("…") with a literal route name in src names an existing r
 });
 
 test('App.js no longer contains the old hand-built switcher', () => {
-  const app = readFileSync(path('../App.js'), 'utf8');
+  const app = readFileSync(repoPath('../App.js'), 'utf8');
   for (const old of ['goToScreen', 'screenHistoryRef', 'SCREENS', 'onNavigate', 'BackHandler']) {
     assert.ok(!new RegExp(`\\b${old}\\b`).test(app), old);
   }

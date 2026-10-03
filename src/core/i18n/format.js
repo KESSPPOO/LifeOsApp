@@ -7,12 +7,11 @@
 // Node, where the tests run), e.g. "lørdag 3. oktober" vs "lørdag den 3.
 // oktober". These rules are small, fixed and tested, so every device shows
 // the same text.
-import { capitalize } from '../../data/helpers.js';
 import { isDateKey, parseDateKey, weekdayIndex, daysBetween } from '../time/dates.js';
 
 /** Monday-first, like the Danish week. Index with weekdayIndex(). */
-export const WEEKDAYS = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag', 'søndag'];
-export const MONTHS = [
+const WEEKDAYS = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag', 'søndag'];
+const MONTHS = [
   'januar', 'februar', 'marts', 'april', 'maj', 'juni',
   'juli', 'august', 'september', 'oktober', 'november', 'december',
 ];
@@ -26,7 +25,8 @@ export function formatDayMonth(key, today) {
 
 /** '2026-10-03' -> 'Lørdag den 3. oktober' (a heading). */
 export function formatDateLong(key) {
-  return capitalize(`${WEEKDAYS[weekdayIndex(key)]} den ${formatDayMonth(key)}`);
+  const text = `${WEEKDAYS[weekdayIndex(key)]} den ${formatDayMonth(key)}`;
+  return text[0].toUpperCase() + text.slice(1);
 }
 
 /**
@@ -47,22 +47,20 @@ export function formatRelativeDay(key, today) {
 
 /**
  * 1234.5 -> '1.234,5'. Thousands with '.', decimals with ','; at most
- * `maxDecimals` decimals, trailing zeros dropped. Not a number -> '–'.
+ * `maxDecimals` decimals, trailing zeros dropped down to `minDecimals`.
+ * Not a number -> '–'.
  */
-export function formatNumber(value, maxDecimals = 2) {
+export function formatNumber(value, maxDecimals = 2, minDecimals = 0) {
   const n = Number(value);
   if (value === null || value === '' || !Number.isFinite(n)) return '–';
   const [int, frac = ''] = Math.abs(n).toFixed(maxDecimals).split('.');
-  const decimals = frac.replace(/0+$/, '');
+  const decimals = frac.replace(/0+$/, '').padEnd(minDecimals, '0');
   const negative = n < 0 && Number(int) + Number(decimals || 0) > 0;
   return `${negative ? '-' : ''}${int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}${decimals ? `,${decimals}` : ''}`;
 }
 
 /** 1234.5 -> '1.234,50 kr.' (always two decimals; non-breaking space). */
 export function formatMoney(value) {
-  const n = Number(value);
-  if (value === null || value === '' || !Number.isFinite(n)) return '–';
-  const fixed = formatNumber(n, 2);
-  const [int, frac = ''] = fixed.split(',');
-  return `${int},${frac.padEnd(2, '0')} kr.`;
+  const text = formatNumber(value, 2, 2);
+  return text === '–' ? text : `${text}\u00a0kr.`;
 }

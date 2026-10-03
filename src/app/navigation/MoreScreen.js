@@ -3,10 +3,11 @@
 // Mere: every screen that is not a bottom-bar tab, in the groups defined by
 // MORE_SECTIONS in src/config/nav.js (ADR-005). Replaces the old drawer.
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../config/colors';
 import { MORE_SECTIONS } from '../../config/nav';
+import { LinkRow } from '../../components/LinkRow';
 
 export default function MoreScreen() {
   const navigation = useNavigation();
@@ -18,17 +19,13 @@ export default function MoreScreen() {
           {section.note ? <Text style={styles.note}>{section.note}</Text> : null}
           <View style={styles.group}>
             {section.items.map((n, i) => (
-              <TouchableOpacity
+              <LinkRow
                 key={n.id}
+                icon={n.icon}
+                label={n.label}
                 onPress={() => navigation.navigate(n.id)}
                 style={[styles.row, i > 0 && styles.rowDivider]}
-                accessibilityRole="button"
-                accessibilityLabel={n.label}
-              >
-                <Text style={styles.icon}>{n.icon}</Text>
-                <Text style={styles.label}>{n.label}</Text>
-                <Text style={styles.chevron}>›</Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
         </View>
@@ -49,9 +46,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgElevated, borderRadius: 16,
     borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden',
   },
-  row:        { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16 },
+  row:        { paddingHorizontal: 16 },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
-  icon:       { fontSize: 20, width: 32 },
-  label:      { flex: 1, fontSize: 16, color: COLORS.text },
-  chevron:    { fontSize: 22, color: COLORS.textMuted },
 });

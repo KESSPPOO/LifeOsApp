@@ -8,9 +8,11 @@
 // The screen mounts on every visit (AppNavigator), so the date and greeting
 // are current whenever it is opened.
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
+import { Card } from '../../../components/Card';
+import { LinkRow } from '../../../components/LinkRow';
 import { localDateKey } from '../../../data/helpers';
 import { toggleJournalEntry } from '../../../data/tasks';
 import { t, formatDateLong } from '../../../core/i18n';
@@ -69,15 +71,15 @@ export default function TodayScreen({ userName }) {
           slot; it will feed timed items into the same NU/NÆSTE logic. */}
       <FocusLabel text={t('today.now')} accent />
       {day.now ? (
-        <FocusItem item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} primary />
+        <ItemRow item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} variant="now" />
       ) : (
-        <View style={styles.emptyNow}>
+        <Card style={styles.emptyNow}>
           <Text style={styles.emptyTitle}>{t(EMPTY_TEXT[day.state].title)}</Text>
           <Text style={styles.emptyBody}>{t(EMPTY_TEXT[day.state].body)}</Text>
           {day.state === 'empty' ? (
             <LinkRow label={t('today.goToPlan')} onPress={() => navigation.navigate('journal')} />
           ) : null}
-        </View>
+        </Card>
       )}
       {day.total > 0 ? (
         <Text style={styles.progress}>{t('today.progress', { done: day.done, total: day.total })}</Text>
@@ -86,7 +88,7 @@ export default function TodayScreen({ userName }) {
       {day.next ? (
         <>
           <FocusLabel text={t('today.next')} />
-          <FocusItem item={day.next} meta={describeItem(day.next, today)} onToggle={toggle} />
+          <ItemRow item={day.next} meta={describeItem(day.next, today)} onToggle={toggle} variant="next" />
         </>
       ) : null}
 
@@ -100,6 +102,7 @@ export default function TodayScreen({ userName }) {
             <LinkRow
               label={t('today.restMore', { count: day.restMore })}
               onPress={() => navigation.navigate('journal')}
+              style={styles.divider}
             />
           ) : null}
         </Section>
@@ -121,6 +124,7 @@ export default function TodayScreen({ userName }) {
               label={goal.title}
               meta={describeGoal(goal, today)}
               onPress={() => navigation.navigate('goals')}
+              style={styles.divider}
             />
           ))}
         </Section>
@@ -129,9 +133,10 @@ export default function TodayScreen({ userName }) {
       {day.shoppingCount > 0 ? (
         <View style={styles.section}>
           <LinkRow
-            label={`🛒  ${t('today.shopping', { count: day.shoppingCount })}`}
-            accessibilityLabel={t('today.shopping', { count: day.shoppingCount })}
+            icon="🛒"
+            label={t('today.shopping', { count: day.shoppingCount })}
             onPress={() => navigation.navigate('groceries')}
+            style={styles.divider}
           />
         </View>
       ) : null}
@@ -148,20 +153,6 @@ function FocusLabel({ text, accent }) {
   );
 }
 
-function FocusItem({ item, meta, onToggle, primary }) {
-  return (
-    <View style={[styles.focus, primary && styles.focusPrimary]}>
-      <View style={styles.textCol}>
-        <Text style={[styles.focusTitle, primary && styles.focusTitlePrimary, item.done && styles.doneText]}>
-          {displayTitle(item)}
-        </Text>
-        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
-      </View>
-      <CheckButton checked={item.done} onPress={() => onToggle(item)} label={item.title} />
-    </View>
-  );
-}
-
 function Section({ title, children }) {
   return (
     <View style={styles.section}>
@@ -171,33 +162,21 @@ function Section({ title, children }) {
   );
 }
 
-function ItemRow({ item, meta, onToggle }) {
+/**
+ * A task or habit with its check button. variant: 'now' (the NU card),
+ * 'next' (the NÆSTE outline) or a plain overview row.
+ */
+function ItemRow({ item, meta, onToggle, variant }) {
   return (
-    <View style={styles.row}>
+    <View style={variant ? [styles.focus, variant === 'now' && styles.focusNow] : styles.row}>
       <View style={styles.textCol}>
-        <Text style={[styles.rowTitle, item.done && styles.doneText]}>{displayTitle(item)}</Text>
+        <Text style={[styles.rowTitle, variant && styles.focusTitle, variant === 'now' && styles.focusTitleNow, item.done && styles.doneText]}>
+          {displayTitle(item)}
+        </Text>
         {meta ? <Text style={styles.meta}>{meta}</Text> : null}
       </View>
       <CheckButton checked={item.done} onPress={() => onToggle(item)} label={item.title} />
     </View>
-  );
-}
-
-/** A full-width row that opens another screen. */
-function LinkRow({ label, meta, onPress, accessibilityLabel }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={styles.row}
-      accessibilityRole="button"
-      accessibilityLabel={[accessibilityLabel ?? label, meta].filter(Boolean).join(', ')}
-    >
-      <View style={styles.textCol}>
-        <Text style={styles.rowTitle}>{label}</Text>
-        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -219,18 +198,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingLeft: 18, paddingRight: 8,
     marginBottom: 24,
   },
-  focusPrimary: {
+  focusNow: {
     backgroundColor: COLORS.bgElevated, borderColor: COLORS.border2,
     paddingVertical: 20, marginBottom: 10,
   },
-  focusTitle:        { fontSize: 17, fontWeight: '600', color: COLORS.text },
-  focusTitlePrimary: { fontSize: 21, lineHeight: 28 },
+  focusTitle:    { fontSize: 17, fontWeight: '600' },
+  focusTitleNow: { fontSize: 21, lineHeight: 28 },
 
-  emptyNow: {
-    backgroundColor: COLORS.bgElevated, borderRadius: 18,
-    borderWidth: 1, borderColor: COLORS.border,
-    paddingHorizontal: 18, paddingTop: 18, paddingBottom: 8, marginBottom: 10,
-  },
+  emptyNow:   { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 8, marginBottom: 10 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
   emptyBody:  { fontSize: 15, lineHeight: 22, color: COLORS.textMuted, marginTop: 6, marginBottom: 6 },
 
@@ -239,14 +214,13 @@ const styles = StyleSheet.create({
   section:      { marginTop: 8, marginBottom: 20 },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textMuted, marginBottom: 4 },
 
+  divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   row: {
-    flexDirection: 'row', alignItems: 'center',
-    minHeight: 56, paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
   },
   textCol:  { flex: 1, paddingRight: 8 },
   rowTitle: { fontSize: 16, color: COLORS.text },
   meta:     { fontSize: 13, color: COLORS.textMuted, marginTop: 3 },
   doneText: { color: COLORS.textMuted, textDecorationLine: 'line-through' },
-  chevron:  { fontSize: 22, color: COLORS.textMuted, paddingHorizontal: 12 },
 });

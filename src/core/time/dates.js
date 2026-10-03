@@ -7,7 +7,22 @@
 // new Date('YYYY-MM-DD'), which parses as UTC midnight and lands on the
 // previous day west of UTC. Day differences are rounded, so the 23- and
 // 25-hour days at a daylight-saving switch still count as one day.
-import { localDateKey } from '../../data/helpers.js';
+
+// Builds a 'YYYY-MM-DD' key from a Date's LOCAL year/month/day — never use
+// toISOString() for this. toISOString() always converts to UTC first, so
+// for any timezone ahead of UTC (Denmark is UTC+1/+2), calling it between
+// midnight and 1-2am local time silently returns YESTERDAY's date, and
+// calling it on local midnight of a specific day (e.g. the 1st of a month)
+// can shift the result back into the previous month entirely. Every place
+// in this app that turns a Date into a 'YYYY-MM-DD' or 'YYYY-MM' key goes
+// through this function instead, so there's exactly one place to get the
+// timezone handling right.
+export function localDateKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86400000;

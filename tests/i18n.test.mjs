@@ -2,15 +2,12 @@
 // Intl, no clock.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import {
-  t, formatNumber, formatMoney, formatDateLong, formatDayMonth, formatRelativeDay, WEEKDAYS,
+  t, formatNumber, formatMoney, formatDateLong, formatDayMonth, formatRelativeDay,
 } from '../src/core/i18n/index.js';
 import { da } from '../src/core/i18n/da.js';
-
-const path = (rel) => fileURLToPath(new URL(rel, import.meta.url));
+import { repoPath, sourceFiles } from './fixtures.mjs';
 
 test('t() looks up, fills placeholders and picks plural forms', () => {
   assert.equal(t('nav.today'), 'I dag');
@@ -36,16 +33,11 @@ test('every string entry is non-empty; plural entries have one and other', () =>
   }
 });
 
-function sourceFiles(dir) {
-  return readdirSync(dir).flatMap(f => {
-    const p = join(dir, f);
-    return statSync(p).isDirectory() ? sourceFiles(p) : p.endsWith('.js') ? [p] : [];
-  });
-}
-
 test('every i18n key written in src exists in da.js', () => {
-  const files = sourceFiles(path('../src')).filter(f => !f.endsWith('da.js'));
-  const keyLike = /['"`]((?:nav|shell|more|today)\.[\w.]+)['"`]/g;
+  const files = sourceFiles(repoPath('../src')).filter(f => !f.endsWith('da.js'));
+  // Every string that starts with one of the table's prefixes ('today.', …).
+  const prefixes = [...new Set(Object.keys(da).map(k => k.split('.')[0]))].join('|');
+  const keyLike = new RegExp(`['"\`]((?:${prefixes})\\.[\\w.]+)['"\`]`, 'g');
   const used = files.flatMap(f => [...readFileSync(f, 'utf8').matchAll(keyLike)].map(m => [m[1], f]));
   assert.ok(used.length > 20, 'the scan finds the keys');
   for (const [key, file] of used) assert.ok(key in da, `${key} in ${file}`);
@@ -73,11 +65,10 @@ test('formatMoney: DKK with two decimals and "kr."', () => {
   assert.equal(formatMoney(NaN), '–');
 });
 
-test('formatDateLong: Danish weekday and month, Monday-first table', () => {
+test('formatDateLong: Danish weekday and month', () => {
   assert.equal(formatDateLong('2026-10-03'), 'Lørdag den 3. oktober');
   assert.equal(formatDateLong('2026-09-28'), 'Mandag den 28. september');
   assert.equal(formatDateLong('2027-01-01'), 'Fredag den 1. januar');
-  assert.equal(WEEKDAYS[0], 'mandag');
 });
 
 test('formatDayMonth adds the year only when it differs from today', () => {

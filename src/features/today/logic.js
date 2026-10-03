@@ -27,12 +27,10 @@ import { t, formatRelativeDay } from '../../core/i18n/index.js';
 export const GOAL_ATTENTION_DAYS = 7;
 /** Overview rows before "N more in Plan". */
 export const REST_LIMIT = 5;
-export const GOALS_LIMIT = 3;
+const GOALS_LIMIT = 3;
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 const priorityRank = (p) => PRIORITY_RANK[p] ?? PRIORITY_RANK.medium;
-
-const isHabitDone = (habit, today) => Boolean(habit.history?.[today]);
 
 /** Unfinished due tasks in NU order (Array.prototype.sort is stable). */
 export function rankDueTasks(tasks) {
@@ -54,7 +52,7 @@ function taskItem(task, today) {
 }
 
 function habitItem(habit, today) {
-  return { kind: 'habit', id: habit.id, title: habit.text, icon: habit.icon, done: isHabitDone(habit, today) };
+  return { kind: 'habit', id: habit.id, title: habit.text, icon: habit.icon, done: Boolean(habit.history?.[today]) };
 }
 
 /**
@@ -86,30 +84,28 @@ export function buildToday({ journal, goals, groceries, today, keepVisibleIds })
   const groups = groupJournal(journal, today, keepVisibleIds);
   const due = [...groups.Overdue, ...groups.Today];
   const dueOpen = rankDueTasks(due.filter(t => !t.done));
+  const dueDone = due.filter(t => t.done);
+  const habits = groups.Habits.map(h => habitItem(h, today));
   const upcomingOpen = groups.Upcoming.filter(t => !t.done);
 
-  const candidates = [
-    ...dueOpen.map(t => taskItem(t, today)),
-    ...groups.Habits.filter(h => !isHabitDone(h, today)).map(h => habitItem(h, today)),
-  ];
+  const candidates = [...dueOpen.map(t => taskItem(t, today)), ...habits.filter(h => !h.done)];
   const now = candidates[0] ?? null;
   const next = candidates[1] ?? (upcomingOpen[0] ? taskItem(upcomingOpen[0], today) : null);
   const featured = new Set([now, next].filter(Boolean).map(item => item.id));
 
-  const restAll = [...dueOpen, ...due.filter(t => t.done)]
+  const restAll = [...dueOpen, ...dueDone]
     .filter(t => !featured.has(t.id))
     .map(t => taskItem(t, today));
 
-  const habitsDone = groups.Habits.filter(h => isHabitDone(h, today)).length;
-  const done = due.filter(t => t.done).length + habitsDone;
-  const total = due.length + groups.Habits.length;
+  const done = dueDone.length + habits.filter(h => h.done).length;
+  const total = due.length + habits.length;
 
   return {
     now,
     next,
     rest: restAll.slice(0, REST_LIMIT),
     restMore: Math.max(0, restAll.length - REST_LIMIT),
-    habits: groups.Habits.filter(h => !featured.has(h.id)).map(h => habitItem(h, today)),
+    habits: habits.filter(h => !featured.has(h.id)),
     goals: goalsNeedingAttention(goals, today).slice(0, GOALS_LIMIT),
     shoppingCount: groceries.filter(g => !g.done).length,
     done,
