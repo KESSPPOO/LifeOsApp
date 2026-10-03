@@ -35,6 +35,10 @@ function sanitize(list) {
  */
 export function createPersistedListStore({ storage, key, seed = [], logger = console }) {
   let saveChain = Promise.resolve();
+  // The hydration in progress, if any. Overlapping hydrate() calls (e.g. an
+  // ErrorBoundary retry while boot is still reading) share it, so a slower
+  // stale or failed read can never overwrite the result of a newer one.
+  let inflight = null;
 
   return createStore((set, get) => ({
     items: [],
@@ -49,18 +53,21 @@ export function createPersistedListStore({ storage, key, seed = [], logger = con
      * call is a no-op (it must never replace live, already-saved state with
      * a stale read) unless the previous read failed.
      */
-    hydrate: async () => {
+    hydrate: () => {
       const { hydrated, persistBlocked } = get();
-      if (hydrated && !persistBlocked) return;
-      const readList = () => storage.read(key, { type: 'array' });
-      let { status, value } = await readList();
-      if (status === 'error') ({ status, value } = await readList()); // one retry for transient errors
-      if (status === 'error') logger.warn(`${key}: read failed; changes will not be saved until it can be read`);
-      set({
-        items: status === 'ok' ? sanitize(value) : status === 'missing' ? seed : [],
-        hydrated: true,
-        persistBlocked: status === 'error',
-      });
+      if (hydrated && !persistBlocked) return Promise.resolve();
+      inflight ??= (async () => {
+        const readList = () => storage.read(key, { type: 'array' });
+        let { status, value } = await readList();
+        if (status === 'error') ({ status, value } = await readList()); // one retry for transient errors
+        if (status === 'error') logger.warn(`${key}: read failed; changes will not be saved until it can be read`);
+        set({
+          items: status === 'ok' ? sanitize(value) : status === 'missing' ? seed : [],
+          hydrated: true,
+          persistBlocked: status === 'error',
+        });
+      })().finally(() => { inflight = null; });
+      return inflight;
     },
 
     /**

@@ -30,6 +30,11 @@ test('add puts the new item first with id = highest id + 1, not done', () => {
   assert.deepEqual(addGrocery([], 'Æbler', 'other'), [{ id: 1, text: 'Æbler', category: 'other', done: false }]);
 });
 
+test('add tolerates a damaged entry without an id (no NaN ids)', () => {
+  const next = addGrocery([{ text: 'no id', done: false }, { id: 2, text: 'x', done: false }], 'Ny', 'other');
+  assert.equal(next[0].id, 3);
+});
+
 test('filter: all / to buy / completed', () => {
   assert.equal(filterGroceries(LEGACY_GROCERIES, 'all').length, 4);
   assert.deepEqual(filterGroceries(LEGACY_GROCERIES, 'to buy').map(i => i.id), [4, 2, 1]);

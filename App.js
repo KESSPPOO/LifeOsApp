@@ -103,6 +103,11 @@ function AppContent() {
 
   const [screen, setScreen]         = useState('home');
   const [ready, setReady]           = useState(false);
+  // Set if boot fails. Rethrown during render so the root ErrorBoundary shows
+  // its retry screen (retry remounts and re-runs boot) instead of the app
+  // staying on the blank loading view, and instead of marking it ready with
+  // partial state that could then be saved over the user's data.
+  const [bootError, setBootError]   = useState(null);
   const [isFirstUse, setIsFirstUse] = useState(false);
 
   // Global Data State
@@ -177,38 +182,42 @@ function AppContent() {
   // are still held here until they are migrated (ADR-003 template).
   useEffect(() => {
     (async () => {
-      await runMigrations(appStorage, { seedJournal: JOURNAL_SEED });
-      const [data] = await Promise.all([
-        appStorage.loadMany([
-          { key: KEYS.isFirstUse,    fallback: true },
-          { key: KEYS.userName,      fallback: '' },
-          { key: KEYS.course,        fallback: '' },
-          { key: KEYS.totalCredits,  fallback: 180 },
-          { key: KEYS.tipsShown,     fallback: [] },
-          { key: KEYS.exams,         fallback: INIT_EXAMS },
-          { key: KEYS.finances,      fallback: INIT_FINANCES },
-          { key: KEYS.goals,         fallback: INIT_GOALS },
-          { key: KEYS.notes,         fallback: INIT_NOTES },
-          { key: KEYS.links,         fallback: INIT_LINKS },
-          { key: KEYS.heatmap,       fallback: {} },
-          { key: KEYS.loggedSeconds, fallback: 0 },
-        ]),
-        hydrateJournal(),
-        hydrateGroceries(),
-      ]);
-      setIsFirstUse(data.isFirstUse);
-      setUserName(data.userName);
-      setCourse(data.course);
-      setTotalCredits(data.totalCredits);
-      setTipsShown(data.tipsShown);
-      setExams(data.exams);
-      setFinances(data.finances);
-      setGoals(data.goals);
-      setNotes(data.notes);
-      setLinks(data.links);
-      setHeatmap(data.heatmap);
-      setLogged(data.loggedSeconds);
-      setReady(true);
+      try {
+        await runMigrations(appStorage, { seedJournal: JOURNAL_SEED });
+        const [data] = await Promise.all([
+          appStorage.loadMany([
+            { key: KEYS.isFirstUse,    fallback: true },
+            { key: KEYS.userName,      fallback: '' },
+            { key: KEYS.course,        fallback: '' },
+            { key: KEYS.totalCredits,  fallback: 180 },
+            { key: KEYS.tipsShown,     fallback: [] },
+            { key: KEYS.exams,         fallback: INIT_EXAMS },
+            { key: KEYS.finances,      fallback: INIT_FINANCES },
+            { key: KEYS.goals,         fallback: INIT_GOALS },
+            { key: KEYS.notes,         fallback: INIT_NOTES },
+            { key: KEYS.links,         fallback: INIT_LINKS },
+            { key: KEYS.heatmap,       fallback: {} },
+            { key: KEYS.loggedSeconds, fallback: 0 },
+          ]),
+          hydrateJournal(),
+          hydrateGroceries(),
+        ]);
+        setIsFirstUse(data.isFirstUse);
+        setUserName(data.userName);
+        setCourse(data.course);
+        setTotalCredits(data.totalCredits);
+        setTipsShown(data.tipsShown);
+        setExams(data.exams);
+        setFinances(data.finances);
+        setGoals(data.goals);
+        setNotes(data.notes);
+        setLinks(data.links);
+        setHeatmap(data.heatmap);
+        setLogged(data.loggedSeconds);
+        setReady(true);
+      } catch (error) {
+        setBootError(error);
+      }
     })();
   }, []);
 
@@ -341,6 +350,8 @@ function AppContent() {
     ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
+
+  if (bootError) throw bootError;
 
   if (!ready) {
     return (

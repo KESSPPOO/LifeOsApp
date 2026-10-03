@@ -132,6 +132,21 @@ for (const { name, key, stored, seed } of MODULES) {
     assert.deepEqual(onDisk(adapter), stored);
   });
 
+  t('overlapping hydrate() calls share one read (no stale result can win)', async () => {
+    const { store, adapter } = setup({ [key]: stored });
+    let reads = 0;
+    const getItem = adapter.getItem;
+    adapter.getItem = async (k) => { reads++; return getItem(k); };
+    const a = store.getState().hydrate();
+    const b = store.getState().hydrate();
+    assert.equal(a, b, 'same in-flight promise');
+    await Promise.all([a, b]);
+    assert.equal(reads, 1);
+    assert.deepEqual(store.getState().items, stored);
+    await store.getState().hydrate();
+    assert.equal(reads, 1, 'no re-read once hydrated');
+  });
+
   t('a later hydrate never replaces live state with a stale read', async () => {
     const { store } = setup({ [key]: stored });
     await store.getState().hydrate();

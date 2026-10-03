@@ -1,7 +1,9 @@
 // src/features/groceries/logic.js
 //
-// Pure grocery-list operations (no React), moved verbatim from
-// GroceriesScreen so they can be unit-tested. A grocery item is
+// Pure grocery-list operations (no React), moved from GroceriesScreen so they
+// can be unit-tested. Same results for valid data; addGrocery additionally
+// treats a missing id as 0 (like the tasks code) so one damaged entry cannot
+// make every new id NaN. A grocery item is
 // { id: number, text: string, category: string, done: boolean }, stored as a
 // plain array under `lifeos_groceries`.
 
@@ -17,7 +19,7 @@ export function deleteGrocery(list, id) {
 
 /** New items go to the top of the list, with id = highest id + 1. */
 export function addGrocery(list, text, category) {
-  const newId = Math.max(0, ...list.map(s => s.id)) + 1;
+  const newId = Math.max(0, ...list.map(s => s.id || 0)) + 1;
   return [{ id: newId, text, category, done: false }, ...list];
 }
 
