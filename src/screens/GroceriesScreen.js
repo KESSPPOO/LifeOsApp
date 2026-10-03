@@ -9,10 +9,16 @@ import { Card } from '../components/Card';
 import { Pill } from '../components/Pill';
 import { CustomAlert } from '../components/CustomAlert';
 import { GlassSheet } from '../components/GlassSheet';
+import { useGroceries, useSetGroceries } from '../features/groceries/store';
+import {
+  GROCERY_CATEGORIES as CATEGORIES, toggleGrocery, deleteGrocery, addGrocery, filterGroceries,
+} from '../features/groceries/logic';
 
-const CATEGORIES = ['supermarket', 'pharmacy', 'home', 'other'];
-
-export default function GroceriesScreen({ groceries, setGroceries }) {
+export default function GroceriesScreen() {
+  // Groceries come from the groceries store (features/groceries), no longer
+  // as props from App.js. setGroceries persists automatically.
+  const groceries = useGroceries();
+  const setGroceries = useSetGroceries();
   const [modalVisible, setModalVisible] = useState(false);
   const [formText, setFormText]         = useState('');
   const [formCat,  setFormCat]          = useState('supermarket');
@@ -23,7 +29,7 @@ export default function GroceriesScreen({ groceries, setGroceries }) {
   const closeModal = () => setModalVisible(false);
 
   const toggleItem = (id) => {
-    setGroceries(prev => prev.map(item => item.id === id ? { ...item, done: !item.done } : item));
+    setGroceries(prev => toggleGrocery(prev, id));
   };
 
   const deleteItem = (id, text) => {
@@ -33,7 +39,7 @@ export default function GroceriesScreen({ groceries, setGroceries }) {
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setAlertConfig(null) },
         { text: 'Delete', style: 'destructive', onPress: () => {
-          setGroceries(prev => prev.filter(item => item.id !== id));
+          setGroceries(prev => deleteGrocery(prev, id));
           setAlertConfig(null);
         }},
       ],
@@ -60,17 +66,13 @@ export default function GroceriesScreen({ groceries, setGroceries }) {
         buttons: [{ text: 'OK', style: 'cancel', onPress: () => setAlertConfig(null) }] });
       return;
     }
-    const newId = Math.max(0, ...groceries.map(s => s.id)) + 1;
-    setGroceries(prev => [{ id: newId, text: formText.trim(), category: formCat, done: false }, ...prev]);
+    const text = formText.trim();
+    setGroceries(prev => addGrocery(prev, text, formCat));
     setFormText('');
     setModalVisible(false);
   };
 
-  const filteredGroceries = groceries.filter(item => {
-    if (filter === 'to buy') return !item.done;
-    if (filter === 'completed') return item.done;
-    return true;
-  });
+  const filteredGroceries = filterGroceries(groceries, filter);
 
   const toBuyCount    = groceries.filter(i => !i.done).length;
   const completedCount = groceries.filter(i =>  i.done).length;

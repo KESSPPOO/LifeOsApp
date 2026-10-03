@@ -29,7 +29,7 @@ prototype.**
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
 | Navigation | Hand-rolled `useState` screen switcher plus a custom drawer in `App.js`. `@react-navigation/*` is installed but **not used yet** |
-| State | **Mid-migration (ADR-001).** Tasks and habits (`journal`) live in a Zustand store (`src/features/tasks/`) that screens read with hooks. All other collections still live in `App.js` (`useState`) and are passed as props, until each is migrated with the same recipe |
+| State | **Mid-migration (ADR-001, ADR-003).** Migrated modules (tasks/habits = `journal`, groceries) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. All other collections still live in `App.js` (`useState`) and are passed as props, until each is migrated with the template in ADR-003 |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
 | Auth (optional) | Firebase Auth (anonymous plus Google One Tap). Disabled unless `EXPO_PUBLIC_FIREBASE_API_KEY` is set; without it the onboarding Google button is hidden. Nothing is synced |
@@ -50,8 +50,12 @@ src/
   core/storage/        Versioned persistence: engine.js (adapter-agnostic, never throws),
                        keys.js (documented key registry), migrations.js (SCHEMA_VERSION +
                        ordered migrations), index.js (appStorage = engine over AsyncStorage)
-  features/tasks/      Tasks + habits store: journalStore.js (pure factory, tested),
-                       store.js (singleton + useJournal / useSetJournal hooks)
+  core/state/          persistedListStore.js: the ONE store factory for persisted lists
+                       (hydration, data safety, ordered saves); tested per module
+  features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal
+                       (domain logic in src/data/tasks.js)
+  features/groceries/  store.js: singleton + useGroceries / useSetGroceries;
+                       logic.js: pure list operations (add/toggle/delete/filter)
   config/              colors.js (theme tokens), nav.js (screen registry), firebase.js
   data/                Pure logic and persistence; no React in here
     helpers.js         Dates (localDateKey!), grade math, formatting
@@ -62,7 +66,7 @@ src/
   screens/             One file per screen; holds local UI state and calls the setters passed in
 tests/                 node:test unit tests (data logic, storage, migrations, stores) + fixtures.mjs
 docs/LIFEOS_PLAN.md    Audit, target architecture, roadmap
-docs/ARCHITECTURE_DECISIONS.md  ADRs (Zustand stores, versioned storage)
+docs/ARCHITECTURE_DECISIONS.md  ADRs (Zustand stores, versioned storage, shared list store + migration template)
 ```
 
 ## Commands
@@ -153,11 +157,16 @@ Things that are easy to get wrong:
 - Colours come from `COLORS` in `src/config/colors.js`. Do not hard-code new
   hex values in screens.
 
-### State and stores (ADR-001)
-- A migrated module owns a Zustand store in `src/features/<module>/`: a pure
-  factory taking injected storage (tested with the in-memory adapter) plus a
-  small binding file exporting the singleton and hooks. Follow
-  `src/features/tasks/` exactly; do not invent a second pattern.
+### State and stores (ADR-001, ADR-003)
+- A migrated list module has `src/features/<module>/store.js`, which calls
+  `createPersistedListStore({ storage: appStorage, key: KEYS.x, seed })` and
+  exports the singleton plus `use<Module>` / `useSet<Module>` /
+  `hydrate<Module>`. Domain rules go in a pure `logic.js`. Do not hand-write
+  hydration or saving in a module, and do not invent a second pattern.
+- Follow the **migration template in ADR-003** step by step, and add the
+  module to `MODULES` in `tests/persistedListStore.test.mjs`.
+- Non-list data (profile scalars, `heatmap`) does not fit the list factory.
+  Do not bend it; decide that pattern when the first such module migrates.
 - Screens read with narrow selectors (`useStore(store, s => s.list)`). Never
   return a new object or array from a selector (render loop); use
   `useShallow` if unavoidable.
@@ -218,8 +227,8 @@ Things that are easy to get wrong:
 - `metro.config.js` disables package `exports` resolution. A new dependency
   must resolve through its root files or `main` (check with
   `npm run check:bundle`); `zustand` and `zustand/vanilla` do.
-- The tasks store is a module singleton: it survives `ErrorBoundary` retries
-  and is re-created by Fast Refresh when its file is edited (dev only;
+- Feature stores are module singletons: they survive `ErrorBoundary` retries
+  and are re-created by Fast Refresh when their file is edited (dev only;
   reload the app after editing store files).
 - `expo lint` / `expo-doctor` may try to reach the Expo API; in a sandbox
   without access use `EXPO_OFFLINE=1`.

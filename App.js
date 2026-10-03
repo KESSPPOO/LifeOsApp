@@ -13,11 +13,12 @@ import { todayKey } from './src/data/helpers';
 import { saveJSON } from './src/data/storage';
 import { appStorage, runMigrations, KEYS } from './src/core/storage';
 import { hydrateJournal, JOURNAL_SEED } from './src/features/tasks/store';
+import { hydrateGroceries } from './src/features/groceries/store';
 import { ErrorBoundary } from './src/app/ErrorBoundary';
 import { FadeSlideIn } from './src/components/FadeSlideIn';
 import {
   INIT_EXAMS, INIT_FINANCES,
-  INIT_GROCERIES, INIT_GOALS, INIT_NOTES, INIT_LINKS,
+  INIT_GOALS, INIT_NOTES, INIT_LINKS,
 } from './src/data/seedData';
 import { auth } from './src/config/firebase';
 import {
@@ -111,11 +112,11 @@ function AppContent() {
   const [tipsShown,    setTipsShown]    = useState([]);
   const [exams,        setExams]        = useState([]);
   const [finances,     setFinances]     = useState([]);
-  const [groceries,    setGroceries]    = useState([]);
   const [goals,        setGoals]        = useState([]);
   const [notes,        setNotes]        = useState([]);
-  // Tasks + habits (`journal`) are NOT held here any more: they live in
-  // src/features/tasks/store.js and screens read them via useJournal().
+  // Migrated modules are NOT held here any more: tasks + habits (`journal`)
+  // and groceries live in stores under src/features/ and screens read them
+  // via hooks (useJournal, useGroceries).
   const [links,        setLinks]        = useState([]);
   const [heatmap,      setHeatmap]      = useState({});
   const [loggedSeconds, setLogged]      = useState(0);
@@ -187,7 +188,6 @@ function AppContent() {
           { key: KEYS.tipsShown,     fallback: [] },
           { key: KEYS.exams,         fallback: INIT_EXAMS },
           { key: KEYS.finances,      fallback: INIT_FINANCES },
-          { key: KEYS.groceries,     fallback: INIT_GROCERIES },
           { key: KEYS.goals,         fallback: INIT_GOALS },
           { key: KEYS.notes,         fallback: INIT_NOTES },
           { key: KEYS.links,         fallback: INIT_LINKS },
@@ -195,6 +195,7 @@ function AppContent() {
           { key: KEYS.loggedSeconds, fallback: 0 },
         ]),
         hydrateJournal(),
+        hydrateGroceries(),
       ]);
       setIsFirstUse(data.isFirstUse);
       setUserName(data.userName);
@@ -203,7 +204,6 @@ function AppContent() {
       setTipsShown(data.tipsShown);
       setExams(data.exams);
       setFinances(data.finances);
-      setGroceries(data.groceries);
       setGoals(data.goals);
       setNotes(data.notes);
       setLinks(data.links);
@@ -313,7 +313,6 @@ function AppContent() {
 
   const pExams      = usePersist(KEYS.exams,      setExams);
   const pFinances   = usePersist(KEYS.finances,   setFinances);
-  const pGroceries  = usePersist(KEYS.groceries,  setGroceries);
   const pGoals      = usePersist(KEYS.goals,      setGoals);
   const pNotes      = usePersist(KEYS.notes,      setNotes);
   const pLinks      = usePersist(KEYS.links,      setLinks);
@@ -377,7 +376,7 @@ function AppContent() {
     ),
     uni:       <UniScreen       exams={exams}         setExams={pExams} totalCredits={totalCredits} />,
     finances:  <FinancesScreen  finances={finances}   setFinances={pFinances}  />,
-    groceries: <GroceriesScreen groceries={groceries} setGroceries={pGroceries} />,
+    groceries: <GroceriesScreen />,
     goals:     <GoalsScreen     goals={goals}         setGoals={pGoals}        />,
     notes:     <NotesScreen     notes={notes}         setNotes={pNotes}        />,
     links:     <LinksScreen     links={links}         setLinks={pLinks}        />,

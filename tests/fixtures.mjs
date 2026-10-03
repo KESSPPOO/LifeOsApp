@@ -2,6 +2,8 @@
 // wrote it (raw AsyncStorage strings under the 'lifeos_' prefix).
 // Deterministic dates: TODAY is fixed.
 import { STORAGE_PREFIX } from '../src/core/storage/keys.js';
+import { createStorage } from '../src/core/storage/engine.js';
+import { createPersistedListStore } from '../src/core/state/persistedListStore.js';
 
 export const TODAY = '2026-03-02';
 
@@ -17,6 +19,14 @@ export const LEGACY_JOURNAL = [
     id: 101, text: 'Reading', icon: '📖', recurring: true, date: null, priority: 'medium', done: false,
     history: { '2026-02-27': 1, '2026-02-28': 1, '2026-03-01': 1 }, streak: 3,
   },
+];
+
+// `groceries` exactly as GroceriesScreen writes it: newest first.
+export const LEGACY_GROCERIES = [
+  { id: 4, text: 'Rugbrød', category: 'supermarket', done: false },
+  { id: 3, text: 'Panodil', category: 'pharmacy', done: true },
+  { id: 2, text: 'Opvasketabs', category: 'home', done: false },
+  { id: 1, text: 'Fødselsdagskort', category: 'other', done: false },
 ];
 
 // The pre-v1.4 separate habits list, migrated into journal by migration 1.
@@ -72,4 +82,16 @@ export function failReadsOf(adapter, key, times = Infinity) {
 export function quietLogger() {
   const warnings = [];
   return { warnings, warn: (...args) => warnings.push(args.map(String).join(' ')), error() {}, log() {} };
+}
+
+/**
+ * A persisted-list store over an in-memory adapter preloaded with `values`
+ * (see rawStore). Returns everything a test needs to inspect.
+ */
+export function setupListStore({ key, values = {}, seed = [] }) {
+  const logger = quietLogger();
+  const adapter = createMemoryAdapter(rawStore(values));
+  const storage = createStorage(adapter, { logger });
+  const store = createPersistedListStore({ storage, key, seed, logger });
+  return { adapter, storage, store, logger };
 }

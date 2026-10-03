@@ -109,3 +109,67 @@ safely across many modules.
   does not migrate the habits a second time.
 - SQLite can later be introduced behind the same engine interface for
   high-volume modules, without touching screens.
+
+---
+
+## ADR-003: One shared factory for persisted list stores
+
+- **Status:** accepted (Session 3, 2026-10-03)
+- **Refines:** ADR-001 rule 1 (per-module store factory) and ADR-002.
+
+### Context
+Tasks/habits got a hand-written store in Session 2. Its data-safety logic had
+nothing task-specific in it: hydrate once with one retry, seed only on a
+missing key, empty list on corrupt or unreadable data, block saving after a
+failed read and allow recovery by re-hydrating, ordered saves, no save before
+hydration, drop non-object entries. Groceries, the second module, needs
+exactly the same thing. Copying it per module would let the copies drift, and
+one forgotten guard overwrites user data.
+
+### Decision
+- `src/core/state/persistedListStore.js` exports one function,
+  `createPersistedListStore({ storage, key, seed, logger })`. It returns a
+  Zustand vanilla store with `{ items, hydrated, persistBlocked, hydrate,
+  setItems, flush }` for **one key holding an array of objects**, in its
+  existing on-disk format.
+- A migrated module has no store factory of its own. It has a binding file
+  `src/features/<module>/store.js` (singleton plus named hooks, e.g.
+  `useGroceries` / `useSetGroceries` / `hydrateGroceries`) and, where it has
+  domain rules, a pure `logic.js` (e.g. `features/groceries/logic.js`, or
+  `src/data/tasks.js` for tasks).
+- The data-safety guarantees are tested once per module: the suite in
+  `tests/persistedListStore.test.mjs` runs against every migrated module's key
+  and real stored format.
+- Scope is deliberately narrow: lists only. Non-list data (the profile
+  scalars, the `heatmap` object) does not get bent into this factory. Write a
+  sibling only when a second module of that shape needs it.
+
+### Consequences
+- Tasks/habits now use the factory (the old `features/tasks/journalStore.js`
+  is gone). The hook names and behaviour are unchanged, and so are all
+  task/habit tests.
+- Adding a list module costs about 20 lines of binding code plus its domain
+  logic and tests.
+
+### Migration template (one module per change)
+1. **Storage key:** keep the existing key and format. Set its owner in
+   `src/core/storage/keys.js`.
+2. **Migration compatibility:** no migration unless the format must change.
+   If it must, add one in `migrations.js` (idempotent, non-destructive) with
+   tests from the old format.
+3. **Feature store:** `src/features/<module>/store.js` calls
+   `createPersistedListStore({ storage: appStorage, key: KEYS.x, seed })`.
+   The seed is the module's existing demo data, used only when the key is
+   missing.
+4. **Hydration:** add `hydrate<Module>()` to the `Promise.all` in `App.js`'s
+   boot, after `runMigrations`.
+5. **Persistence:** screens write only through the persisted setter
+   (`setItems`, exported as `useSet<Module>`). Never call AsyncStorage
+   directly.
+6. **Feature hooks:** screens read with `use<Module>()`, a narrow selector,
+   instead of props.
+7. **Tests:** add the module to `MODULES` in
+   `tests/persistedListStore.test.mjs` with a fixture in today's stored
+   format, and test the module's operations (pure, and through the store).
+8. **Remove it from `App.js`:** the `useState`, the `loadMany` entry, the
+   `usePersist` setter, the props, and the now-unused seed import.

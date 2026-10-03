@@ -129,11 +129,9 @@ Ordered roughly by how much it blocks LifeOS.
    `ErrorBoundary` added in Session 2.
 7. **Deferred from the Session 2 reviews** (do with the next module
    migration, not piecemeal):
-   - Extract the generic data-safety part of `journalStore.js` (hydrate once,
-     retry/`persistBlocked`, ordered saves, no save before hydration) into a
-     reusable helper in `src/core/storage/` so each module store does not copy
-     ~30 lines. Do it when the second module migrates, with its tests moved
-     to the helper.
+   - ~~Extract the generic data-safety part of `journalStore.js` into a
+     reusable helper.~~ Done in Session 3 (`createPersistedListStore`,
+     ADR-003).
    - Make `KEY_SPECS` types the default in the engine (`type ?? spec.type`)
      so `App.js`-owned keys are shape-checked too. Small behaviour change for
      legacy keys (malformed values fall back instead of crashing a screen);
@@ -451,7 +449,7 @@ the same recipe: the remaining collections, one per change (see Session 2b below
   pass; no visual or behaviour change; device smoke test checklist included
   in the PR.
 
-### Session 2b (next): second module on the store pattern + shared helper
+### Session 2b: second module on the store pattern + shared helper — DONE (Session 3)
 - **Objective:** migrate **Groceries** (smallest collection, read only by
   `GroceriesScreen`, future Shopping module) to a store, and extract the
   generic data-safety logic out of `journalStore.js` into a reusable helper
@@ -511,3 +509,4 @@ the same recipe: the remaining collections, one per change (see Session 2b below
 |---|---|
 | 1 (2026-10-03) | Audit, `CLAUDE.md`, this plan. Fixed launch crash (Firebase key now from `EXPO_PUBLIC_FIREBASE_API_KEY`, `auth` null when unset). Fixed overdue tasks being invisible on the Tasks screen (new "Overdue" section; a task ticked off there stays visible, dimmed, for the rest of the visit so the tap can be undone). Onboarding hides "Continue with Google" when Firebase is not configured. `computeStreak` now counts from the passed date instead of the wall clock. Extracted task grouping and streak logic to `src/data/tasks.js` (deduplicated from `seedData.js`). Added `npm test` (node:test, 18 tests), `check:bundle`, `validate`, `doctor` scripts. Removed the ignored, conflicting `app.json` (effective config unchanged). Ignored `.env` and `.env.*` (except `.env.example`). |
 | 2 (2026-10-03) | Versioned storage in `src/core/storage` (engine over injectable adapter, never throws, corrupt values backed up to `lifeos_corrupt_<key>`, read errors distinct from missing; documented key registry; `schemaVersion` + migration runner). Migration 1 absorbs the old inline `habitsMigrated` block (same result; atomic write, duplicate guard, aborts on unreadable data). Tasks + habits moved to a Zustand store (`src/features/tasks`, ADR-001); `App.js` no longer holds `journal`; Journal/Home/Stats read via hooks; on-disk format unchanged. Boot runs migrations then loads in parallel. Root `ErrorBoundary` (Danish fallback). ESLint via `expo lint` added to `validate`. New dependency: `zustand`. 54 tests. Behaviour change only for damaged data: a corrupt/unreadable journal shows empty instead of demo data. |
+| 3 (2026-10-03) | Shared `createPersistedListStore` (`src/core/state/`, ADR-003) holds all list-store data safety; tasks/habits moved onto it (behaviour unchanged; `journalStore.js` removed). **Groceries migrated** (second module): `src/features/groceries/` (store + pure `logic.js`), `GroceriesScreen` reads via hooks, `App.js` no longer holds groceries, `lifeos_groceries` format unchanged. Safety suite runs per module. ADR-003 documents the migration template. 77 tests. |

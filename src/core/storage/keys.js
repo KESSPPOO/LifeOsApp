@@ -26,6 +26,9 @@ export const KEY_SPECS = Object.freeze({
   habits:             { type: 'array',   owner: 'legacy', description: 'Pre-v1.4 separate habits list. Read once by migration 1; never deleted, never written.' },
   habitsMigrated:     { type: 'boolean', owner: 'legacy', description: 'Set by migration 1 (and by builds before versioned storage) once habits were merged into journal.' },
 
+  // ── Groceries (migrated to features/groceries; future Shopping) ───────
+  groceries:          { type: 'array',   owner: 'features/groceries', description: 'Grocery checklist: { id, text, category, done }.' },
+
   // ── Still owned by App.js (not migrated yet) ──────────────────────────
   isFirstUse:         { type: 'boolean', owner: 'App.js', description: 'true until onboarding completes.' },
   userName:           { type: 'string',  owner: 'App.js', description: 'Name from onboarding.' },
@@ -34,7 +37,6 @@ export const KEY_SPECS = Object.freeze({
   tipsShown:          { type: 'array',   owner: 'App.js', description: 'Ids of dismissed Home tips.' },
   exams:              { type: 'array',   owner: 'App.js', description: 'University exams.' },
   finances:           { type: 'array',   owner: 'App.js', description: 'Income/expense transactions.' },
-  groceries:          { type: 'array',   owner: 'App.js', description: 'Grocery checklist.' },
   goals:              { type: 'array',   owner: 'App.js', description: 'Numeric goals.' },
   notes:              { type: 'array',   owner: 'App.js', description: 'Notes with tags.' },
   links:              { type: 'array',   owner: 'App.js', description: 'Bookmarks (starred = Home quick links).' },
