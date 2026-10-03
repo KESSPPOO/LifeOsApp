@@ -46,12 +46,18 @@ import { DatePicker } from '../components/DatePicker';
 import { DraggableList } from '../components/DraggableList';
 import { GlassSheet } from '../components/GlassSheet';
 import { todayKey, last7Days } from '../data/helpers';
-import { TASK_SECTIONS, computeStreak, groupJournal } from '../data/tasks';
+import { TASK_SECTIONS, groupJournal, toggleJournalEntry } from '../data/tasks';
+import { useJournal, useSetJournal } from '../features/tasks/store';
 
 const CHECK_HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };
 const DAY_HIT_SLOP   = { top: 8, bottom: 8, left: 4, right: 4 };
 
-export default function JournalScreen({ journal, setJournal }) {
+export default function JournalScreen() {
+  // Tasks + habits come from the tasks store (features/tasks), no longer as
+  // props from App.js. setJournal keeps the same contract: value or updater,
+  // persisted automatically.
+  const journal = useJournal();
+  const setJournal = useSetJournal();
   const [composerText, setComposerText] = useState('');
   const [composerDate, setComposerDate] = useState(todayKey());
   const [composerPriority, setComposerPriority] = useState(null);
@@ -154,16 +160,7 @@ export default function JournalScreen({ journal, setJournal }) {
   // check/circle), different meaning depending on the item type.
   const toggleEntry = (id) => {
     setToggledIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
-    setJournal(prev => prev.map(t => {
-      if (t.id !== id) return t;
-      if (!t.recurring) return { ...t, done: !t.done };
-
-      const history = { ...(t.history || {}) };
-      if (history[today]) delete history[today];
-      else history[today] = 1;
-
-      return { ...t, history, streak: computeStreak(history, today) };
-    }));
+    setJournal(prev => toggleJournalEntry(prev, id, today));
   };
 
   const deleteEntry = (id) => {

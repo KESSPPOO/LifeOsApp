@@ -7,10 +7,13 @@ import { ProgressBar } from '../components/ProgressBar';
 import { StatCard } from '../components/StatCard';
 import { BarChart } from '../components/BarChart';
 import { calculateAverages, predictedDegreeGrade, localDateKey, gradeWeight } from '../data/helpers';
+import { useJournal } from '../features/tasks/store';
 
 const WEEKDAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export default function StatsScreen({ exams, journal, heatmap, finances = [] }) {
+export default function StatsScreen({ exams, heatmap, finances = [] }) {
+  // Tasks + habits are read from the tasks store, not passed by App.js.
+  const journal = useJournal();
   const habits     = journal.filter(t => t.recurring);
   const oneTimeTasks = journal.filter(t => !t.recurring);
 

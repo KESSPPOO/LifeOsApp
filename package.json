@@ -11,7 +11,8 @@
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test",
     "check:bundle": "expo export --platform android --output-dir .expo/check-export",
     "doctor": "npx expo-doctor",
-    "validate": "npm test && npm run check:bundle"
+    "validate": "npm test && npm run lint && npm run check:bundle",
+    "lint": "expo lint"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -32,10 +33,13 @@
     "react-native-nitro-modules": "^0.36.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-svg": "15.12.1"
+    "react-native-svg": "15.12.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
   },
   "private": true

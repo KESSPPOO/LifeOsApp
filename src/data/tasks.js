@@ -30,6 +30,22 @@ export function computeStreak(history, today) {
   return streak;
 }
 
+// The tap on a task's checkbox or a habit's "today" circle. One-off task:
+// flips `done`. Habit: toggles today in `history` and recomputes the cached
+// `streak`. Returns a new list; entries other than `id` are untouched.
+export function toggleJournalEntry(journal, id, today) {
+  return journal.map(t => {
+    if (t.id !== id) return t;
+    if (!t.recurring) return { ...t, done: !t.done };
+
+    const history = { ...(t.history || {}) };
+    if (history[today]) delete history[today];
+    else history[today] = 1;
+
+    return { ...t, history, streak: computeStreak(history, today) };
+  });
+}
+
 // Groups the journal into TASK_SECTIONS for the Tasks screen.
 //
 // 'Overdue' = not-done one-off tasks dated before today. Previously no

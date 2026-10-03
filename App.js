@@ -10,7 +10,10 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { COLORS } from './src/config/colors';
 import { NAV } from './src/config/nav';
 import { todayKey } from './src/data/helpers';
-import { loadJSON, saveJSON } from './src/data/storage';
+import { saveJSON } from './src/data/storage';
+import { appStorage, runMigrations, KEYS } from './src/core/storage';
+import { hydrateJournal } from './src/features/tasks/store';
+import { ErrorBoundary } from './src/app/ErrorBoundary';
 import { FadeSlideIn } from './src/components/FadeSlideIn';
 import {
   INIT_EXAMS, INIT_FINANCES,
@@ -56,10 +59,13 @@ function usePersist(key, setter) {
 // 3-button / gesture navigation bar at the bottom. With React Native 0.81
 // and newArchEnabled the app draws edge-to-edge, so the bottom nav bar
 // was visually on top of the app's own bottom tab strip.
+// ErrorBoundary sits inside it so its fallback can use safe-area insets too.
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
@@ -108,7 +114,8 @@ function AppContent() {
   const [groceries,    setGroceries]    = useState([]);
   const [goals,        setGoals]        = useState([]);
   const [notes,        setNotes]        = useState([]);
-  const [journal,      setJournal]      = useState([]);
+  // Tasks + habits (`journal`) are NOT held here any more: they live in
+  // src/features/tasks/store.js and screens read them via useJournal().
   const [links,        setLinks]        = useState([]);
   const [heatmap,      setHeatmap]      = useState({});
   const [loggedSeconds, setLogged]      = useState(0);
@@ -163,49 +170,45 @@ function AppContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerMounted]);
 
+  // Boot: bring stored data up to the current schema version first (see
+  // src/core/storage/migrations.js; this absorbed the old inline
+  // habitsMigrated block), then load everything in parallel. Tasks + habits
+  // hydrate their own store; the remaining sections are still held here
+  // until they are migrated the same way (docs/LIFEOS_PLAN.md).
   useEffect(() => {
     (async () => {
-      const isFirst = await loadJSON('isFirstUse', true);
-      setIsFirstUse(isFirst);
-      setUserName(     await loadJSON('userName',      ''));
-      setCourse(       await loadJSON('course',        ''));
-      setTotalCredits( await loadJSON('totalCredits',  180));
-      setTipsShown(    await loadJSON('tipsShown',     []));
-      setExams(        await loadJSON('exams',         INIT_EXAMS));
-      setFinances(     await loadJSON('finances',      INIT_FINANCES));
-      setGroceries(    await loadJSON('groceries',     INIT_GROCERIES));
-      setGoals(        await loadJSON('goals',         INIT_GOALS));
-      setNotes(        await loadJSON('notes',         INIT_NOTES));
-      setLinks(        await loadJSON('links',         INIT_LINKS));
-      setHeatmap(      await loadJSON('heatmap',       {}));
-      setLogged(       await loadJSON('loggedSeconds', 0));
-
-      let loadedJournal = await loadJSON('journal', INIT_JOURNAL);
-
-      const habitsMigrated = await loadJSON('habitsMigrated', false);
-      if (!habitsMigrated) {
-        const oldHabits = await loadJSON('habits', []);
-        if (oldHabits.length > 0) {
-          const existingIds = new Set(loadedJournal.map(j => j.id));
-          let nextId = Math.max(0, ...loadedJournal.map(j => j.id || 0), ...oldHabits.map(h => h.id || 0)) + 1;
-          const migrated = oldHabits.map(h => ({
-            id: existingIds.has(h.id) ? nextId++ : h.id,
-            text: h.name,
-            icon: h.icon || '🌟',
-            recurring: true,
-            history: h.history || {},
-            streak: h.streak || 0,
-            date: null,
-            priority: 'medium',
-            done: false,
-          }));
-          loadedJournal = [...loadedJournal, ...migrated];
-          saveJSON('journal', loadedJournal);
-        }
-        saveJSON('habitsMigrated', true);
-      }
-      setJournal(loadedJournal);
-
+      await runMigrations(appStorage, { seedJournal: INIT_JOURNAL });
+      const [data] = await Promise.all([
+        appStorage.loadMany([
+          { key: KEYS.isFirstUse,    fallback: true },
+          { key: KEYS.userName,      fallback: '' },
+          { key: KEYS.course,        fallback: '' },
+          { key: KEYS.totalCredits,  fallback: 180 },
+          { key: KEYS.tipsShown,     fallback: [] },
+          { key: KEYS.exams,         fallback: INIT_EXAMS },
+          { key: KEYS.finances,      fallback: INIT_FINANCES },
+          { key: KEYS.groceries,     fallback: INIT_GROCERIES },
+          { key: KEYS.goals,         fallback: INIT_GOALS },
+          { key: KEYS.notes,         fallback: INIT_NOTES },
+          { key: KEYS.links,         fallback: INIT_LINKS },
+          { key: KEYS.heatmap,       fallback: {} },
+          { key: KEYS.loggedSeconds, fallback: 0 },
+        ]),
+        hydrateJournal(),
+      ]);
+      setIsFirstUse(data.isFirstUse);
+      setUserName(data.userName);
+      setCourse(data.course);
+      setTotalCredits(data.totalCredits);
+      setTipsShown(data.tipsShown);
+      setExams(data.exams);
+      setFinances(data.finances);
+      setGroceries(data.groceries);
+      setGoals(data.goals);
+      setNotes(data.notes);
+      setLinks(data.links);
+      setHeatmap(data.heatmap);
+      setLogged(data.loggedSeconds);
       setReady(true);
     })();
   }, []);
@@ -313,7 +316,6 @@ function AppContent() {
   const pGroceries  = usePersist('groceries',  setGroceries);
   const pGoals      = usePersist('goals',      setGoals);
   const pNotes      = usePersist('notes',      setNotes);
-  const pJournal    = usePersist('journal',    setJournal);
   const pLinks      = usePersist('links',      setLinks);
 
   const timerProps = {
@@ -365,7 +367,7 @@ function AppContent() {
   const SCREENS = {
     home: (
       <HomeScreen
-        exams={exams} tasks={journal}
+        exams={exams}
         finances={finances} heatmap={heatmap} links={links}
         userName={userName} course={course} isFirstUse={isFirstUse}
         tipsShown={tipsShown} onDismissTip={dismissTip}
@@ -379,9 +381,9 @@ function AppContent() {
     goals:     <GoalsScreen     goals={goals}         setGoals={pGoals}        />,
     notes:     <NotesScreen     notes={notes}         setNotes={pNotes}        />,
     links:     <LinksScreen     links={links}         setLinks={pLinks}        />,
-    journal:   <JournalScreen   journal={journal}     setJournal={pJournal}    />,
+    journal:   <JournalScreen />,
     stats:     <StatsScreen
-                 exams={exams} journal={journal} heatmap={heatmap}
+                 exams={exams} heatmap={heatmap}
                  finances={finances}
                  loggedSeconds={loggedSeconds + timerSec}
                />,

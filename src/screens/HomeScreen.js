@@ -11,6 +11,7 @@ import { StatCard } from '../components/StatCard';
 import { TipBubble } from '../components/TipBubble';
 import { DraggableList } from '../components/DraggableList';
 import { greet, todayKey, fmt, diffDays, calculateAverages } from '../data/helpers';
+import { useJournal } from '../features/tasks/store';
 
 const MAX_STARRED = 6;
 const HOME_TASKS_LIMIT = 6;
@@ -47,10 +48,12 @@ function SectionHeader({ title, onPress }) {
 }
 
 export default function HomeScreen({
-  exams, tasks, finances, heatmap, links,
+  exams, finances, heatmap, links,
   userName, course, isFirstUse, tipsShown, onDismissTip,
   onNavigate,
 }) {
+  // Tasks + habits are read from the tasks store, not passed by App.js.
+  const tasks = useJournal();
   const today    = todayKey();
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
