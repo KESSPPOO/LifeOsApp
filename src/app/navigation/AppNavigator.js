@@ -1,12 +1,10 @@
 // src/app/navigation/AppNavigator.js
 //
-// The app's navigation (ADR-004): one bottom-tab navigator holding every
-// route in src/config/nav.js as siblings, reproducing the old hand-built
-// shell. ShellLayout (top bar + drawer) wraps the navigator, BottomNav is its
-// tab bar, and Android Back walks the full switch history (BACK_BEHAVIOR).
-//
-// This reproduces the CURRENT app. It is not the future LifeOS navigation;
-// that is a separate design decision.
+// The app's navigation: one bottom-tab navigator holding every route in
+// src/config/nav.js as siblings (ADR-004). ShellLayout (top bar) wraps the
+// navigator, BottomNav is its tab bar (I dag · Plan · Mere, ADR-005), and
+// Android Back walks the full switch history (BACK_BEHAVIOR). Screens that
+// are not tabs are opened from Mere.
 import React from 'react';
 import { NavigationContainer, DarkTheme, useIsFocused } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -25,6 +23,8 @@ import GoalsScreen      from '../../screens/GoalsScreen';
 import NotesScreen      from '../../screens/NotesScreen';
 import LinksScreen      from '../../screens/LinksScreen';
 import JournalScreen    from '../../screens/JournalScreen';
+import TodayScreen      from '../../features/today/screens/TodayScreen';
+import MoreScreen       from './MoreScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -43,7 +43,7 @@ function FocusedScreen({ children }) {
 
 /**
  * legacyProps: TEMPORARY wiring for data App.js still owns (profile, exams,
- * finances, tips, timer). Keyed by route name; passed to those four screens
+ * finances, tips, timer). Keyed by route name; passed to the screens that need it
  * through render callbacks until their domains migrate to feature stores
  * (docs/LIFEOS_PLAN.md). Every other screen reads its own store.
  */
@@ -58,6 +58,8 @@ export function AppNavigator({ legacyProps }) {
         screenLayout={({ children }) => <FocusedScreen>{children}</FocusedScreen>}
         screenOptions={{ headerShown: false }}
       >
+        <Tab.Screen name="today">{() => <TodayScreen {...legacyProps.today} />}</Tab.Screen>
+        <Tab.Screen name="more" component={MoreScreen} />
         <Tab.Screen name="home">{() => <HomeScreen {...legacyProps.home} />}</Tab.Screen>
         <Tab.Screen name="uni">{() => <UniScreen {...legacyProps.uni} />}</Tab.Screen>
         <Tab.Screen name="journal" component={JournalScreen} />

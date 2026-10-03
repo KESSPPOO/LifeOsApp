@@ -286,11 +286,12 @@ function AppContent() {
     );
   }
 
-  // TEMPORARY wiring (ADR-004): the four screens that still need data held
+  // TEMPORARY wiring (ADR-004): the screens that still need data held
   // here get it through the navigator, keyed by route name. Remove each entry
   // when its domain moves to a feature store. Navigation itself is no longer
   // a prop: screens use useNavigation().
   const legacyProps = {
+    today: { userName },
     home: {
       exams, finances, heatmap,
       userName, course, isFirstUse,

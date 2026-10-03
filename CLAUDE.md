@@ -28,7 +28,7 @@ prototype.**
 |---|---|
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
-| Navigation | React Navigation 7 (ADR-004): one bottom-tab navigator (`src/app/navigation/AppNavigator.js`) reproducing the existing shell. The custom top bar and `Modal` drawer are its `layout` (`ShellLayout`), the custom bottom bar is its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Route names, labels and icons live in `src/config/nav.js`. This is **not** the final LifeOS navigation |
+| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Plan · Mere** (ADR-005); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer. The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
 | State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
@@ -48,12 +48,18 @@ eslint.config.js       Expo ESLint config
 src/
   app/                 App-shell pieces: ErrorBoundary (root fallback, Danish)
   app/navigation/      AppNavigator (NavigationContainer + tab navigator), ShellLayout
-                       (top bar + drawer), BottomNav (bottom bar)
+                       (top bar, "Tilbage" on secondary screens), BottomNav (bottom bar),
+                       MoreScreen (Mere: every non-tab screen, grouped)
+  core/i18n/           da.js (Danish strings) + t() (index.js); format.js: da-DK dates,
+                       numbers, DKK (hand-written, not Intl: same output on every device)
+  core/time/           dates.js: local 'YYYY-MM-DD' arithmetic, Monday-first weeks, ISO week
   core/storage/        Versioned persistence: engine.js (adapter-agnostic, never throws),
                        keys.js (documented key registry), migrations.js (SCHEMA_VERSION +
                        ordered migrations), index.js (appStorage = engine over AsyncStorage)
   core/state/          persistedListStore.js: the ONE store factory for persisted lists
                        (hydration, data safety, ordered saves); tested per module
+  features/today/      I dag: logic.js (NU/NÆSTE + overview, pure), screens/TodayScreen.js,
+                       components/CheckButton.js. Reads tasks, goals, groceries stores
   features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal
                        (domain logic in src/data/tasks.js)
   features/groceries/  store.js: singleton + useGroceries / useSetGroceries;
@@ -62,8 +68,8 @@ src/
   features/notes/      store.js + logic.js (add/edit/delete, tag collection)
   features/links/      store.js + logic.js (add/edit/delete, star limit, URL
                        normalisation); also read by HomeScreen (Quick Links)
-  config/              colors.js (theme tokens), nav.js (routes: names, labels, icons,
-                       bottom-bar membership, initial route, back behaviour), firebase.js
+  config/              colors.js (theme tokens), nav.js (routes: names, Danish labels, icons,
+                       tabs, Mere sections, initial route, back behaviour), firebase.js
   data/                Pure logic and persistence; no React in here
     helpers.js         Dates (localDateKey!), grade math, formatting
     tasks.js           Task/habit grouping and streaks (unit-tested)
@@ -149,9 +155,10 @@ Things that are easy to get wrong:
   one `<Tab.Screen name=…>` in `src/app/navigation/AppNavigator.js`
   (`tests/navigation.test.mjs` checks that the two match). Navigate with
   `useNavigation().navigate('<route>')`, never with callbacks passed down
-  from `App.js`. The tab navigator is the CURRENT shell; nested stacks or a
-  new structure are a deliberate design decision, not something to add on
-  the side.
+  from `App.js`. A new route is either a tab (`tab: true`) or listed in a
+  Mere `section`; the tests check that nothing is unreachable. Adding a tab
+  or nested stacks is an ADR-level decision (ADR-005), not something to add
+  on the side.
 - Pure logic gets tests in `tests/<name>.test.mjs`, which `npm test` discovers
   automatically. Make them deterministic: pass dates in, never read the
   clock inside the logic under test. A module imported by a test must import
@@ -221,12 +228,20 @@ Things that are easy to get wrong:
   language rather than mixing languages; the translation session converts it
   together with the rest. Do not translate piecemeal while doing unrelated
   work.
+- New UI text goes in `src/core/i18n/da.js` and is read with `t('key')`
+  (placeholders `{name}`, `{ one, other }` plurals by `count`); a test
+  checks that every key used in `src` exists. Format with
+  `src/core/i18n` (`formatDateLong`, `formatRelativeDay`, `formatNumber`,
+  `formatMoney`) and do date maths with `src/core/time/dates.js`, not
+  `Intl`/`toLocale*` (output differs between Hermes builds and Node).
 - Use `da-DK` formatting for new code: Monday-first weeks, comma decimals,
   DKK. Watch for code that drops æ, ø and å (e.g. `TagInput`'s `[^a-z0-9-]`
   sanitiser) or parses `12,50` as `12` (`parseFloat`).
 - Give interactive elements an `accessibilityLabel` and `accessibilityRole`,
   especially icon-only buttons (✕, ✎, ☰). Keep touch targets around 44 pt or
-  larger, and do not add text smaller than 12.
+  larger, and do not add text smaller than 12. Text uses `text` or
+  `textMuted`; `textSub` (≈2.9:1) and small `accent` text on `bg2`/cards
+  fail WCAG AA (`tests/a11y.test.mjs` checks the new UI).
 
 ## Known pitfalls (verified in the audit)
 - With an empty Firebase API key, `initializeAuth` throws. `firebase.js`

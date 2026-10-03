@@ -1,20 +1,19 @@
 // src/app/navigation/BottomNav.js
 //
-// The bottom bar (the tab navigator's custom tabBar): the five routes marked
-// bottomNav in src/config/nav.js, current one highlighted, icon "pop" when
-// the screen changes. Moved unchanged from App.js; only the source of the
-// current route (navigator state) and the action (navigation.navigate)
-// changed.
+// The bottom bar (the tab navigator's custom tabBar): the tabs in
+// src/config/nav.js (I dag · Plan · Mere, ADR-005). The current tab is
+// highlighted (Mere while a screen listed on Mere is open) and its icon
+// "pops" when the tab changes.
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../config/colors';
-import { BOTTOM_NAV_ITEMS } from '../../config/nav';
+import { TAB_ITEMS, tabFor } from '../../config/nav';
 
 export function BottomNav({ state, navigation }) {
   // insets.bottom = system nav bar height (Android 3-button/gesture) / home indicator (iOS)
   const insets = useSafeAreaInsets();
-  const current = state.routes[state.index].name;
+  const current = tabFor(state.routes[state.index].name);
 
   const navScalesRef = useRef({});
   const getNavScale = (id) => {
@@ -22,7 +21,7 @@ export function BottomNav({ state, navigation }) {
     return navScalesRef.current[id];
   };
   // The old shell ran this effect while the loading view still hid the bar,
-  // so the first "pop" was never seen. Skip it here too: only screen changes
+  // so the first "pop" was never seen. Skip it here too: only tab changes
   // pop the icon.
   const mountedRef = useRef(false);
   useEffect(() => {
@@ -39,8 +38,8 @@ export function BottomNav({ state, navigation }) {
     // paddingBottom = insets.bottom + 8 base padding. Without it, on Android
     // with 3-button nav (e.g. Galaxy A34) the bar renders behind the system
     // buttons.
-    <View style={[styles.bottomNav, { paddingBottom: insets.bottom + 8 }]}>
-      {BOTTOM_NAV_ITEMS.map((n) => (
+    <View style={[styles.bottomNav, { paddingBottom: insets.bottom + 8 }]} accessibilityRole="tablist">
+      {TAB_ITEMS.map((n) => (
         <TouchableOpacity
           key={n.id}
           onPress={() => navigation.navigate(n.id)}
@@ -77,7 +76,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: COLORS.border,
     backgroundColor: COLORS.bg2,
   },
-  bottomNavItem: { alignItems: 'center', flex: 1 },
+  bottomNavItem: { alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 48 },
   bottomNavIconWrap: {
     width: 36, height: 28, alignItems: 'center', justifyContent: 'center',
     borderRadius: 10,
@@ -87,6 +86,8 @@ const styles = StyleSheet.create({
   },
   bottomNavIcon: { fontSize: 20, opacity: 0.35 },
   bottomNavIconActive: { opacity: 1 },
-  bottomNavLabel: { fontSize: 10, color: COLORS.textSub, marginTop: 4 },
-  bottomNavLabelActive: { color: COLORS.accent, fontWeight: '600' },
+  // 12 pt and textMuted: readable and above 4.5:1 (textSub was not).
+  bottomNavLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  // The accent is only 4.3:1 on bg2, so the selected label is white + bold.
+  bottomNavLabelActive: { color: COLORS.text, fontWeight: '700' },
 });

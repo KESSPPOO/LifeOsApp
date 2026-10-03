@@ -1,31 +1,38 @@
-
+// src/components/HeaderBar.js
+//
+// The top bar of the app shell (src/app/navigation/ShellLayout.js): the
+// current screen's title, with a "Tilbage" button on secondary screens.
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../config/colors';
+import { t } from '../core/i18n';
 
-export function HeaderBar({ title, onMenuPress }) {
+export function HeaderBar({ title, onBack }) {
   return (
     <View style={styles.bar}>
-      <TouchableOpacity
-        onPress={onMenuPress}
-        style={styles.menuBtn}
-        accessibilityRole="button"
-        accessibilityLabel="Open menu"
-      >
-        <Text style={styles.menuIcon}>☰</Text>
-      </TouchableOpacity>
-      <Text style={styles.logo}>
-        <Text style={{ color: COLORS.accent }}>Life</Text>OS
-      </Text>
-      <Text style={styles.screenName}>{title}</Text>
+      {onBack ? (
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('shell.back')}
+          accessibilityHint={t('shell.backHint')}
+        >
+          <Text style={styles.backText}>‹ {t('shell.back')}</Text>
+        </TouchableOpacity>
+      ) : null}
+      <Text style={styles.title} accessibilityRole="header" numberOfLines={1}>{title}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, height: 52, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.bg },
-  menuBtn:    { padding: 8 },
-  menuIcon:   { fontSize: 20, color: COLORS.textMuted },
-  logo:       { fontSize: 15, fontWeight: 'bold', color: COLORS.text },
-  screenName: { fontSize: 13, color: COLORS.textMuted },
+  bar: {
+    flexDirection: 'row', alignItems: 'center',
+    minHeight: 52, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.bg,
+  },
+  backBtn:  { minHeight: 44, justifyContent: 'center', paddingRight: 12, marginLeft: -4 },
+  backText: { fontSize: 16, color: COLORS.text },
+  title:    { flex: 1, fontSize: 17, fontWeight: '600', color: COLORS.text },
 });

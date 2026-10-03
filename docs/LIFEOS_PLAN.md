@@ -51,7 +51,8 @@ This session fixed it (see § 12).
 |---|---|---|---|
 | Onboarding (name, degree, year, credit total, "what matters" goals) | `OnboardingScreen` | **REPLACE LATER** | Italian-university specific (Triennale/Magistrale, CFU). Year and goals are collected but **discarded** (`handleOnboardingComplete` ignores them). Becomes a short Danish onboarding. |
 | "Continue with Google" during onboarding | `App.js`, Firebase | **UNCERTAIN** | Only pre-fills the name; no sync exists. Needs a native build and `google-services.json`; disabled unless the API key env var is set. Keep it until a sync decision is made. |
-| Home dashboard: greeting, "Mission Control" stats, next exam, pending tasks preview, quick links | `HomeScreen` | **REFACTOR LATER** | Natural seed for **I dag (Today)**. The pending-tasks logic (overdue first, capped list) is reusable. |
+| I dag (Today): date, week, greeting, NU / NÆSTE, rest of today, habits, goals with a near deadline, shopping count | `src/features/today/` | **KEEP** (new, Session 6) | The start screen. Danish. Real data only; tasks and habits can be ticked off in place. Rules in `logic.js` (tested). |
+| Home dashboard: greeting, "Mission Control" stats, next exam, pending tasks preview, quick links | `HomeScreen` | **REMOVE LATER** | Session 6: replaced as start screen by I dag; still reachable under Mere → Ældre skærme ("Gammel forside"). University-heavy (avg grade, next exam). Retire with its `home_section_order` key and `legacyProps.home`. |
 | Home section drag-to-reorder (persisted) | `HomeScreen` + `DraggableList` | **UNCERTAIN** | Works but is reported as unreliable (README Known Issues). Re-evaluate when Today is designed. |
 | First-use tip bubbles | `HomeScreen`, `TipBubble` | **REMOVE LATER** | **Never shown:** Home only renders after onboarding, when `isFirstUse` is already false, so `tipToShow` is always null. |
 | Tasks: Overdue / Today / Upcoming / No Date sections, bottom composer, edit modal, priorities, drag-to-reorder, clear all | `JournalScreen` (key `journal`) | **KEEP** (refactor later) | Core of the future Tasks module. The Overdue section was added in this session. |
@@ -66,7 +67,7 @@ This session fixed it (see § 12).
 | Study timer and heatmap | `App.js` only | **REMOVE LATER** | Dead code: no UI calls the timer since upstream v1.0. `heatmap` and `loggedSeconds` are still read by Home and Stats. Remove together with the "Study Days" stats. |
 | Pre-seeded demo data | `seedData.js` | **REPLACE LATER** | Italian-student content. LifeOS should start empty (calm first run), with demo data at most as an explicit option. |
 | "Clear All" on every list screen | all list screens | **KEEP** | |
-| Drawer and bottom navigation, Android back history | `src/app/navigation/`, `nav.js` | **KEEP** (structure is a later design decision) | Session 5: now runs on React Navigation (ADR-004) with the same visible behaviour; Back walks the full history. |
+| Bottom navigation, Mere, Android back history | `src/app/navigation/`, `nav.js` | **KEEP** | Session 5: React Navigation (ADR-004). Session 6: bottom bar I dag · Plan · Mere; the drawer was replaced by the Mere screen (ADR-005); University and Finances are no longer primary. |
 
 ### Reusable shared components
 
@@ -205,6 +206,18 @@ Ordered roughly by how much it blocks LifeOS.
   of 9–11 are common.
 - Contrast: `textSub` (#5a5a72) is about 2.9:1 on the background and 2.6:1 on
   cards, which fails WCAG AA for normal text. `textMuted` is fine at 6.3:1.
+  `accent` text is 4.5:1 on `bg` but only 4.3:1 on `bg2` and 4.0:1 on cards.
+- *Session 6:* the Danish foundation exists (`src/core/i18n`: `t()`, da-DK
+  dates/numbers/DKK; `src/core/time`: Monday-first weeks, ISO week) and is
+  used by the shell, I dag and Mere, which also meet the a11y rules
+  (roles, labels, 44+ pt targets, ≥ 12 pt text, AA contrast;
+  `tests/a11y.test.mjs`). The legacy screens are unchanged: still English
+  (now under Danish top-bar titles), `DatePicker` still Sunday-first,
+  `fmt()` still `en-US`.
+- I dag treats a goal deadline of today as "Frist i dag" (local date
+  comparison), while `GoalsScreen`'s `isGoalExpired` (UTC parse, § 3) may
+  already call it expired after 01:00/02:00. Fix the Goals rule when that
+  screen is next changed.
 - Dark theme only. Whether a light or high-contrast theme is needed is
   unknown.
 
@@ -508,7 +521,7 @@ the same recipe: the remaining collections, one per change (see Session 2b below
   instead of exiting; no data-layer changes; validate passes; device check of
   back button and insets.
 
-### Session 4: Danish and accessibility baseline
+### Session 4: Danish and accessibility baseline — FOUNDATION DONE (Session 6: `src/core/i18n`, `src/core/time`; legacy screens not translated yet)
 - **Objective:** Danish user-facing text and locale handling for the screens
   being kept, plus accessible shared primitives.
 - **Scope:** `src/core/i18n/da.js` + `t()`; da-DK date and number formatting;
@@ -520,7 +533,7 @@ the same recipe: the remaining collections, one per change (see Session 2b below
   helper tests for parsing and formatting; contrast of text tokens ≥ 4.5:1;
   validate passes.
 
-### Session 5: I dag (Today) v1
+### Session 5: I dag (Today) v1 — FOUNDATION DONE (Session 6: new screen in `src/features/today`, start screen; old Home kept under Mere; dead Home bits and storage cleanup still to do)
 - **Objective:** evolve Home into a calm Today screen.
 - **Scope:** overdue and today's tasks, today's habits (check-off in place),
   next upcoming item; remove dead Home bits (tips, study days, timer state)
@@ -546,3 +559,4 @@ the same recipe: the remaining collections, one per change (see Session 2b below
 | 3 (2026-10-03) | Shared `createPersistedListStore` (`src/core/state/`, ADR-003) holds all list-store data safety; tasks/habits moved onto it (behaviour unchanged; `journalStore.js` removed). **Groceries migrated** (second module): `src/features/groceries/` (store + pure `logic.js`), `GroceriesScreen` reads via hooks, `App.js` no longer holds groceries, `lifeos_groceries` format unchanged. Safety suite runs per module. ADR-003 documents the migration template. Overlapping hydrations share one read; a failed boot shows the ErrorBoundary retry screen instead of an endless loading view. Behaviour change for damaged data only: corrupt/unreadable groceries show an empty list instead of the demo list, and unreadable grocery data is never overwritten (same rule as tasks). 79 tests. |
 | 4 (2026-10-03) | **Goals, Notes and Links migrated** with the ADR-003 template, one commit each; `persistedListStore.js` unchanged. Each got `src/features/<module>/store.js` + a pure `logic.js` (clock and generated ids passed in). `HomeScreen` reads links via `useLinks` + `starredLinks`. `App.js` no longer holds any list module. Stored keys and formats unchanged and never rewritten on load; damaged data for these modules now follows the shared safety rules (corrupt -> backed up, empty list; unreadable -> never overwritten). `isGoalExpired` returns a real boolean (the old inline `''` was rendered as a bare string in a View). Safety suite runs for all five list modules. 143 tests. |
 | 5 (2026-10-03) | **Navigation infrastructure migrated to React Navigation 7** (ADR-004), same visible behaviour: one bottom-tab navigator over the nine existing routes; the existing top bar + Modal drawer (`ShellLayout`, navigator `layout`) and bottom bar (`BottomNav`, `tabBar`) moved out of `App.js` unchanged; `backBehavior: 'fullHistory'` replaces the manual history + `BackHandler`; screens mount only while focused (as before) with the same entrance animation; Home links use `useNavigation()`; onboarding stays a gate. No new runtime dependencies (`@react-navigation/routers`, already installed, declared as a devDependency for the tests); no storage/store changes. The shell reuses `HeaderBar` and gains accessibility roles/labels (invisible). Temporary `legacyProps` wiring for Home/Uni/Finances/Stats. `App.js` 559 -> ~305 lines. 153 tests (TabRouter-based Back tests, route-name source checks). |
+| 6 (2026-10-03) | **First LifeOS product shell + I dag.** ADR-005: bottom bar I dag · Plan · Mere (Træning/Mad slot in when they exist); the drawer is replaced by a Danish Mere screen grouping Livet (Indkøb, Mål, Noter), Værktøjer (Statistik, Links, Økonomi) and Ældre skærme (Universitet, old Home); secondary screens get a "Tilbage" button; the app starts on I dag. Route ids unchanged plus `today` and `more`. New I dag screen (`src/features/today`): date + ISO week + greeting, NU and NÆSTE chosen by a tested, deterministic rule over real tasks/habits (with a calm empty or all-done state), the rest of today, today's habits, goals with a deadline within 7 days, and the to-buy count; tasks and habits tick off in place via the existing `toggleJournalEntry`. Danish foundation: `t()` + `da.js`, hand-written da-DK date/number/DKK formatting, Monday-first week helpers. Shell a11y: roles, labels, 12 pt bottom-bar labels, AA contrast. No storage keys added, removed or changed; University/Finances code and data untouched; legacy screens not translated. 196 tests. |

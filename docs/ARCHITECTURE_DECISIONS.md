@@ -260,3 +260,81 @@ Shell behaviour:
   `NavigationContainer`), can be added later without another shell rewrite.
 - Unchanged: drawer gestures (none before), visuals, which screens are in the
   bottom bar, and storage and stores.
+
+---
+
+## ADR-005: Transitional LifeOS navigation: I dag · Plan · Mere
+
+- **Status:** accepted (Session 6, 2026-10-03). Builds on ADR-004 (same
+  navigator); changes only the information architecture.
+
+### Context
+ADR-004 reproduced the inherited shell: a bottom bar with Home, University,
+Tasks, Finances and Stats, plus a drawer listing everything. That bar is the
+old student app. The product direction (`docs/LIFEOS_PLAN.md` § 6) is:
+
+- CORE: I dag, Timewheel, Calendar, Tasks, Routines/Habits
+- HEALTH: Training, Exercise library, Nutrition, Sleep, Recovery
+- LIFE: Shopping/Household, Goals, Notes
+- PROGRESSION: Pip, XP, stats
+
+The preferred long-term bar is **I dag / Plan / Træning / Mad / Mere**.
+Træning and Mad do not exist. Tabs for them would be fake features.
+
+Product decisions for the existing modules (Session 6):
+
+| Module | Decision |
+|---|---|
+| University | Legacy. Off the primary navigation; code and data kept; not migrated or redesigned |
+| Finances | Kept as is; off the primary navigation; secondary tool |
+| Links | Kept; secondary |
+| Tasks/Habits | Core |
+| Groceries | Future Shopping/Household |
+| Goals | Core supporting |
+| Notes | Supporting |
+| Old Home dashboard | Replaced as start screen by the new I dag; kept reachable for now |
+
+### Decision
+- **Bottom bar: I dag · Plan · Mere** (three tabs, in that order).
+  - **I dag** (`today`, new): the start screen (`INITIAL_ROUTE`).
+  - **Plan** (`journal`): today's Tasks screen (tasks + habits). Plan is where
+    Calendar, Timewheel and Routines will live; for now it is the tasks list.
+    The route id stays `journal` (ADR-004: ids are only renamed
+    deliberately; nothing gains from renaming it now).
+  - **Mere** (`more`, new): a plain Danish list of every secondary screen,
+    grouped as *Livet* (Indkøb, Mål, Noter), *Værktøjer* (Statistik,
+    Links, Økonomi) and *Ældre skærme* (Universitet, the old Home dashboard).
+- **Growth without another rewrite:** Træning and Mad become tabs between
+  Plan and Mere when those modules exist (one `NAV` entry with
+  `tab: true` each). A module that graduates from Mere to the bar changes
+  one field. Nothing else in the shell knows the list.
+- **The drawer is removed.** Mere replaces it (the plan's original target in
+  § 4). Two parallel menus would list the same screens twice. The ☰ button
+  goes with it. Secondary screens show a "Tilbage" button in the top bar,
+  which does the same as Android Back (`goBack`, falling back to Mere when
+  there is no history), so iOS users are not stranded.
+- **Same navigator.** Still one flat bottom-tab navigator with
+  `backBehavior: 'fullHistory'` (ADR-004). Every route, old and new, is a
+  sibling. No nested stacks yet: the secondary screens are single screens,
+  and Back already walks the full history. A native stack per tab can be
+  added when a tab needs pushed detail screens.
+- **`src/config/nav.js` stays the single source:** route id, Danish label,
+  icon, `tab` (in the bottom bar) and `section` (its Mere group). The bottom
+  bar, the top bar title, the Mere screen and the tests read it. The bar
+  highlights *Mere* while a secondary screen is shown, so the user can see
+  where they are.
+- **Danish shell, English legacy screens.** Labels in the shell, I dag and
+  Mere are Danish (`src/core/i18n`). The legacy screens keep their English
+  content until the planned translation session. Mere says so for the
+  *Ældre skærme* group.
+- **No storage changes.** No keys are removed or renamed. University,
+  Finances and old-Home data stay where they are and still load at boot.
+
+### Consequences
+- A fresh start opens on I dag; Back from I dag with no history exits.
+- University and Finances are two taps away (Mere → item), not one.
+- The old Home dashboard and its `home_section_order` key keep working
+  under Mere → Ældre skærme. Retiring it (and its `legacyProps`) is a later
+  cleanup once nobody needs it.
+- The navigation tests pin the new primary order and check that every route
+  is either a tab or listed in a Mere section.
