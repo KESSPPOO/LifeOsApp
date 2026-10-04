@@ -99,6 +99,9 @@ export function getScheduleForDate({ journal, routines = [], routineLog = [], da
   return { items, conflicts, untimed };
 }
 
+/** Where `date` lies from `today`: 'today' | 'past' | 'future'. */
+export const dayRelation = (date, today) => (date === today ? 'today' : date < today ? 'past' : 'future');
+
 /**
  * The minute a day model needs for `date`: statuses depend on the clock
  * only for today and the days next to it (a task crossing midnight). For

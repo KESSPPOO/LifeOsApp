@@ -10,8 +10,8 @@
 // nothing of its own. Tapping an item, or "Åbn" / "Flyt" on an overlap,
 // opens the same task sheet as Plan (useEntryEditor). Nothing is ever moved
 // automatically.
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { LinkRow } from '../../../components/LinkRow';
@@ -31,6 +31,8 @@ import { clockFor } from '../../schedule/day';
 import { DayRing } from '../components/DayRing';
 import { Timeline } from '../components/Timeline';
 import { ConflictPanel } from '../../schedule/ConflictPanel';
+import { DateHeader } from '../../schedule/DateHeader';
+import { useScheduleItemActions } from '../../schedule/useScheduleItemActions';
 
 const FLEXIBLE_SHOWN = 3;
 
@@ -63,16 +65,9 @@ export default function TimewheelScreen() {
   const rows = useMemo(() => timelineRows(day), [day]);
 
   const toggle = (item) => tick(item.id);
-  // Stable, so the memoised timeline does not re-render for unrelated state.
-  // A task opens the task sheet; a routine opens that day's checklist.
-  const open = useCallback((item) => (item.kind === 'routine'
-    ? openChecklist(item)
-    : openEditor('task', item.task)), [openChecklist, openEditor]);
-  // "Flyt": a task's time is edited in the task sheet; a routine's time
-  // belongs to the routine itself, edited on Rutiner.
-  const move = (item) => (item.kind === 'routine'
-    ? navigation.navigate('routines', { editId: item.routineId })
-    : openEditor('task', item.task, { focus: 'time' }));
+  // A task opens the task sheet, a routine its day's checklist; "Flyt" a
+  // task's time field or the routine's template (shared with Kalender).
+  const { open, move } = useScheduleItemActions({ openEditor, openChecklist });
 
   const relativeLabel = Math.abs(daysBetween(today, date)) <= 1 ? capitalize(formatRelativeDay(date, today)) : null;
 
@@ -80,30 +75,14 @@ export default function TimewheelScreen() {
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* ── Day navigation ── */}
-        <View style={styles.dayNav}>
-          <TouchableOpacity onPress={() => step(-1)} style={styles.stepBtn} accessibilityRole="button" accessibilityLabel={t('timewheel.prevDay')}>
-            <Text style={styles.stepText}>‹</Text>
-          </TouchableOpacity>
-          <View style={styles.dayTitle}>
-            <Text style={styles.date} accessibilityRole="header">{formatDateLong(date)}</Text>
-            <Text style={styles.subline}>
-              {[relativeLabel, t('today.week', { week: isoWeekNumber(date) })].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => step(1)} style={styles.stepBtn} accessibilityRole="button" accessibilityLabel={t('timewheel.nextDay')}>
-            <Text style={styles.stepText}>›</Text>
-          </TouchableOpacity>
-        </View>
-        {selected !== null ? (
-          <TouchableOpacity
-            onPress={() => setSelected(null)}
-            style={styles.todayBtn}
-            accessibilityRole="button"
-            accessibilityHint={t('timewheel.backToTodayHint')}
-          >
-            <Text style={styles.todayText}>{t('timewheel.backToToday')}</Text>
-          </TouchableOpacity>
-        ) : null}
+        <DateHeader
+          title={formatDateLong(date)}
+          subline={[relativeLabel, t('today.week', { week: isoWeekNumber(date) })].filter(Boolean).join(' · ')}
+          prevLabel={t('timewheel.prevDay')}
+          nextLabel={t('timewheel.nextDay')}
+          onStep={step}
+          onToday={selected !== null ? () => setSelected(null) : null}
+        />
 
         {/* ── 1. NU / NÆSTE ── */}
         {day.relation === 'today' ? (
@@ -203,18 +182,6 @@ export default function TimewheelScreen() {
 const styles = StyleSheet.create({
   root:   { flex: 1, backgroundColor: COLORS.bg },
   scroll: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
-
-  dayNav:   { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  stepBtn:  { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  stepText: { fontSize: 30, color: COLORS.text, lineHeight: 34 },
-  dayTitle: { flex: 1, alignItems: 'center' },
-  date:     { fontSize: 20, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
-  subline:  { fontSize: 14, color: COLORS.textMuted, marginTop: 4, textAlign: 'center' },
-  todayBtn: {
-    alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 18,
-    borderRadius: 22, borderWidth: 1, borderColor: COLORS.border2, marginBottom: 8,
-  },
-  todayText: { fontSize: 15, fontWeight: '600', color: COLORS.text },
 
   quiet: { fontSize: 15, lineHeight: 22, color: COLORS.textMuted, marginBottom: 16 },
 

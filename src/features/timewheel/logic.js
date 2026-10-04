@@ -12,7 +12,7 @@ import { isTimed } from '../tasks/schedule.js';
 import { taskItem, habitItem } from '../tasks/items.js';
 import { selectFocus } from '../tasks/focus.js';
 import { focusRoutineItems } from '../routines/model.js';
-import { getScheduleForDate } from '../schedule/day.js';
+import { getScheduleForDate, dayRelation } from '../schedule/day.js';
 import { MINUTES_PER_DAY } from '../../core/time/timeOfDay.js';
 
 /** Free time shown as its own row in the timeline from this length on. */
@@ -41,7 +41,7 @@ const MIN_GAP_MINUTES = 30;
 export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds, routines = [], routineLog = [] }) {
   const { items, conflicts, untimed } = getScheduleForDate({ journal, routines, routineLog, date, today, nowMinutes });
   const flexibleRoutines = untimed.filter(item => item.kind === 'routine');
-  const relation = date === today ? 'today' : date < today ? 'past' : 'future';
+  const relation = dayRelation(date, today);
   const onTimeline = new Set(items.map(item => item.id));
   const flexible = journal.filter(task =>
     !task.recurring && !task.done && !onTimeline.has(task.id)

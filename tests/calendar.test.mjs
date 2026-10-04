@@ -208,11 +208,12 @@ const week = (extra = {}) => buildCalendarWeek({
   journal: WEEK_JOURNAL, routines: [routine('w')], routineLog: [], date: '2026-10-07', today: MON, ...extra,
 });
 
-test('Uge: exactly seven local days, Monday first, with today and the selected day', () => {
+test('Uge: exactly seven local days, Monday first, with today; the same for every day of the week', () => {
   const w = week();
   assert.deepEqual(w.days.map(d => d.date), weekDates('2026-10-07'));
   assert.deepEqual(w.days.map(d => d.isToday), [true, false, false, false, false, false, false]);
-  assert.deepEqual(w.days.map(d => d.selected), [false, false, true, false, false, false, false]);
+  // The selected day is the screen's, so selecting another day rebuilds nothing.
+  for (const date of weekDates('2026-10-07')) assert.deepEqual(week({ date }), w, date);
 });
 
 test('Uge: what each day holds; a task past midnight counts on its own day only', () => {
@@ -296,10 +297,13 @@ const CALENDAR_DIR = repoPath('../src/features/calendar');
 const screenSource = readFileSync(repoPath('../src/features/calendar/screens/CalendarScreen.js'), 'utf8');
 
 test('items open the existing flows: task sheet, routine checklist, routine template for a routine\'s time', () => {
-  assert.match(screenSource, /openChecklist\(item\)/);
-  assert.match(screenSource, /openEditor\('task', item\.task\)/);
-  assert.match(screenSource, /openEditor\('task', item\.task, \{ focus: 'time' \}\)/);
-  assert.match(screenSource, /navigate\('routines', \{ editId: item\.routineId \}\)/);
+  const actions = readFileSync(repoPath('../src/features/schedule/useScheduleItemActions.js'), 'utf8');
+  assert.match(screenSource, /useScheduleItemActions\(\{ openEditor, openChecklist \}\)/);
+  assert.match(readFileSync(repoPath('../src/features/timewheel/screens/TimewheelScreen.js'), 'utf8'), /useScheduleItemActions\(/, 'the same as Tidshjul');
+  assert.match(actions, /openChecklist\(item\)/);
+  assert.match(actions, /openEditor\('task', item\.task\)/);
+  assert.match(actions, /openEditor\('task', item\.task, \{ focus: 'time' \}\)/);
+  assert.match(actions, /navigate\('routines', \{ editId: item\.routineId \}\)/);
   assert.match(screenSource, /openEditor\('task', \{ text: '', date \}\)/);
   assert.ok(!/TaskSheet|RoutineSheet|ChecklistSheet/.test(screenSource), 'no editor of its own');
 });

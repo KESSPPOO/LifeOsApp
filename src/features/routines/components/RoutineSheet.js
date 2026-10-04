@@ -48,7 +48,7 @@ export function RoutineSheet({ editing, initial, onSave, onDelete, onClose }) {
           <Text style={styles.title} accessibilityRole="header">
             {t(editing ? 'routine.form.editTitle' : 'routine.form.newTitle')}
           </Text>
-          {/* Opened from a day (Tidshjul, Kalender, a checklist): a change is to the routine, on every day. */}
+          {/* Also reached from a day ("Flyt" in Tidshjul and Kalender, a checklist): a change is to the routine, on every day. */}
           {editing ? <Text style={styles.note}>{t('routine.form.templateNote')}</Text> : null}
           <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
             <Text style={styles.label}>{t('routine.form.name')}</Text>

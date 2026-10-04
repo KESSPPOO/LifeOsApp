@@ -507,7 +507,9 @@ drift from Plan and Tidshjul and need syncing.
   the old code plus regression tests show identical output for Tidshjul
   and I dag. The per-item words (`timeRange`, `itemDetails`,
   `overlapText`, `describeScheduledItem`), `clockFor` and the
-  `ConflictPanel` moved with it, so the two views say and show the same.
+  `ConflictPanel` moved with it, and the date heading (`DateHeader`) and
+  what tapping an item does (`useScheduleItemActions`) are shared too, so
+  the two views say, show and open the same.
   Tasks and routines do not import it; it imports them. No Event class,
   no providers, no adapters.
 - **Kalender persists nothing.** Route `calendar` ("Kalender"), on Mere →

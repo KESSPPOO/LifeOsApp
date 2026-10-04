@@ -38,7 +38,7 @@ test('textSub fails 4.5:1, so the new UI does not use it for text', () => {
 
 // The new UI: the app shell, the shared components it added, and every
 // screen/component under src/features/today, plan, timewheel, routines and
-// calendar (new files there are picked up), and the shared ConflictPanel.
+// calendar (new files there are picked up), and the shared schedule UI.
 const NEW_UI = [
   ...sourceFiles(repoPath('../src/app/navigation')),
   ...sourceFiles(repoPath('../src/features/today')).filter(f => !f.endsWith('logic.js')),
@@ -46,7 +46,7 @@ const NEW_UI = [
   ...sourceFiles(repoPath('../src/features/timewheel')).filter(f => !f.endsWith('logic.js')),
   ...sourceFiles(repoPath('../src/features/routines')).filter(f => !/(model|store)\.js$/.test(f)),
   ...sourceFiles(repoPath('../src/features/calendar')).filter(f => !f.endsWith('logic.js')),
-  repoPath('../src/features/schedule/ConflictPanel.js'),
+  ...sourceFiles(repoPath('../src/features/schedule')).filter(f => !f.endsWith('day.js')),
   repoPath('../src/components/Choice.js'),
   ...sourceFiles(repoPath('../src/features/tasks/components')),
   repoPath('../src/components/HeaderBar.js'),

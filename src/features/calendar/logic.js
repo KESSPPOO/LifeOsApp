@@ -11,7 +11,7 @@
 // draws it as given) and keeps every position true to the clock: only a
 // block's height is raised to a readable, touchable minimum, and blocks
 // that would then cover each other sit side by side instead.
-import { getScheduleForDate, describeScheduledItem } from '../schedule/day.js';
+import { getScheduleForDate, describeScheduledItem, dayRelation } from '../schedule/day.js';
 import { addDays, startOfWeek, isoWeekNumber } from '../../core/time/dates.js';
 import { MINUTES_PER_DAY, minutesToTime } from '../../core/time/timeOfDay.js';
 import { t, formatDateLong, formatDateRange } from '../../core/i18n/index.js';
@@ -134,10 +134,8 @@ function layoutBlocks(items, window) {
   return blocks;
 }
 
-const relationTo = (date, today) => (date === today ? 'today' : date < today ? 'past' : 'future');
-
 /** Routines on a past date are projected from the routine as it is now (ADR-008). */
-const projectsRoutines = (relation, items) => relation === 'past' && items.some(item => item.kind === 'routine');
+const projectsRoutines = (date, today, items) => date < today && items.some(item => item.kind === 'routine');
 
 /**
  * Everything Dag shows for `date`:
@@ -155,7 +153,7 @@ const projectsRoutines = (relation, items) => relation === 'past' && items.some(
  */
 export function buildCalendarDay({ journal, routines = [], routineLog = [], date, today, nowMinutes }) {
   const { items, conflicts, untimed } = getScheduleForDate({ journal, routines, routineLog, date, today, nowMinutes });
-  const relation = relationTo(date, today);
+  const relation = dayRelation(date, today);
   const nowMinute = relation === 'today' ? nowMinutes : null;
   const window = items.length > 0 ? timeWindow(items, nowMinute) : null;
   const blocks = window ? layoutBlocks(items, window) : [];
@@ -177,7 +175,7 @@ export function buildCalendarDay({ journal, routines = [], routineLog = [], date
     nowTop: window && nowMinute !== null ? toY(nowMinute, window) : null,
     height: window ? Math.max(toY(window.end, window), ...blocks.map(b => b.top + b.height)) : 0,
     state: items.length > 0 ? 'scheduled' : untimed.length > 0 ? 'onlyUntimed' : 'empty',
-    projected: projectsRoutines(relation, [...items, ...untimed]),
+    projected: projectsRoutines(date, today, [...items, ...untimed]),
   };
 }
 
@@ -192,23 +190,24 @@ export function buildCalendarDay({ journal, routines = [], routineLog = [], date
  *   count     what is planned that day: items starting on it plus untimed
  *             (a task running past midnight counts on its own day only)
  *   doneCount, conflictCount (overlap groups, as in Tidshjul)
- *   isToday, selected
+ *   isToday
  * window: one for the whole week, so the days line up.
- * No statuses are shown, so the week never depends on the clock.
+ * The same for every date of a week (the selected day is the screen's), and
+ * no statuses are shown, so the week never depends on the clock: it is
+ * rebuilt only when the week or the stored lists change.
  */
 export function buildCalendarWeek({ journal, routines = [], routineLog = [], date, today }) {
   const days = weekDates(date).map(day => {
     const { items, conflicts, untimed } = getScheduleForDate({ journal, routines, routineLog, date: day, today, nowMinutes: 0 });
-    const own = [...items.filter(item => item.start >= 0), ...untimed];
+    const own = [...items.filter(item => item.date === day), ...untimed];
     return {
       date: day,
       isToday: day === today,
-      selected: day === date,
       items,
       count: own.length,
       doneCount: own.filter(item => item.done).length,
       conflictCount: conflicts.length,
-      routines: items.some(item => item.kind === 'routine') || untimed.some(item => item.kind === 'routine'),
+      projected: projectsRoutines(day, today, [...items, ...untimed]),
     };
   });
   const window = timeWindow(days.flatMap(day => day.items));
@@ -230,7 +229,7 @@ export function buildCalendarWeek({ journal, routines = [], routineLog = [], dat
     window,
     axis,
     empty: days.every(day => day.count === 0),
-    projected: days.some(day => day.date < today && day.routines),
+    projected: days.some(day => day.projected),
   };
 }
 
@@ -241,26 +240,27 @@ export function describeCalendarItem(item, items) {
   return describeScheduledItem(item.kind === 'routine' ? item : { ...item, kindLabel: t('calendar.task') }, items);
 }
 
-/** What an untimed row shows besides its title: kind (a routine), progress or klaret, vigtig. */
+/** An untimed item's state: progress or klaret, vigtig. */
+const untimedState = (item) => [
+  item.done ? t('timewheel.done') : item.progressText ?? null,
+  item.important ? t('task.meta.important') : null,
+].filter(Boolean);
+
+/** What an untimed row shows besides its title: the kind (a routine), then its state. */
 export function untimedDetails(item) {
-  return [
-    item.kindLabel ?? null,
-    item.done ? t('timewheel.done') : item.progressText ?? null,
-    item.important ? t('task.meta.important') : null,
-  ].filter(Boolean);
+  return [item.kindLabel ?? null, ...untimedState(item)].filter(Boolean);
 }
 
 /** An untimed item: 'Ring til mor, Opgave, uden tidspunkt, klaret'. */
 export function describeUntimedItem(item) {
-  return [item.title, item.kindLabel ?? t('calendar.task'), t('calendar.a11y.untimed'),
-    ...untimedDetails(item).filter(text => text !== item.kindLabel)].join(', ');
+  return [item.title, item.kindLabel ?? t('calendar.task'), t('calendar.a11y.untimed'), ...untimedState(item)].join(', ');
 }
 
 /** A day in Uge: 'Mandag den 5. oktober, i dag, 3 planlagte ting, 1 klaret, 1 konflikt' (selection is a state). */
 export function describeWeekDay(day) {
   return [
     formatDateLong(day.date),
-    day.isToday ? t('calendar.today').toLowerCase() : null,
+    day.isToday ? t('nav.today').toLowerCase() : null,
     day.count > 0 ? t('calendar.a11y.count', { count: day.count }) : t('calendar.dayOpen').toLowerCase(),
     day.doneCount > 0 ? t('calendar.done', { count: day.doneCount }) : null,
     day.conflictCount > 0 ? t('calendar.conflicts', { count: day.conflictCount }) : null,

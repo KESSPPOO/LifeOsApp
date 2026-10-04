@@ -66,7 +66,9 @@ src/
   features/schedule/   day.js: getScheduleForDate = THE per-date schedule (timed tasks +
                        routine occurrences incl. those crossing midnight, lanes, overlaps,
                        untimed; ADR-009), clockFor, the per-item words (timeRange,
-                       itemDetails, overlapText, describeScheduledItem); ConflictPanel.js.
+                       itemDetails, overlapText, describeScheduledItem), dayRelation;
+                       ConflictPanel.js, DateHeader.js (‹ date › + "I dag"),
+                       useScheduleItemActions.js (open / "Flyt" a task or routine).
                        Used by Tidshjul and Kalender; persists nothing
   features/timewheel/  Tidshjul (route `timewheel`, ADR-007): logic.js (buildDay on the shared
                        schedule: NU/NÆSTE, flexible list, timeline rows, ring geometry; pure),

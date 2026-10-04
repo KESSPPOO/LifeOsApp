@@ -18,7 +18,7 @@ import { describeWeekDay } from '../logic';
 const LANE_TOP = [5, 13, 21];
 const pct = (fraction) => `${fraction * 100}%`;
 
-export const WeekStrip = memo(function WeekStrip({ week, onSelect }) {
+export const WeekStrip = memo(function WeekStrip({ week, selectedDate, onSelect }) {
   return (
     <View>
       <View style={styles.axisRow} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
@@ -30,23 +30,25 @@ export const WeekStrip = memo(function WeekStrip({ week, onSelect }) {
         </View>
         <View style={styles.countCol} />
       </View>
-      {week.days.map(day => <WeekRow key={day.date} day={day} axis={week.axis} onSelect={onSelect} />)}
+      {week.days.map(day => (
+        <WeekRow key={day.date} day={day} selected={day.date === selectedDate} axis={week.axis} onSelect={onSelect} />
+      ))}
     </View>
   );
 });
 
-function WeekRow({ day, axis, onSelect }) {
+function WeekRow({ day, selected, axis, onSelect }) {
   return (
     <TouchableOpacity
       onPress={() => onSelect(day.date)}
-      style={[styles.row, day.selected && styles.rowSelected]}
+      style={[styles.row, selected && styles.rowSelected]}
       accessibilityRole="button"
-      accessibilityState={{ selected: day.selected }}
+      accessibilityState={{ selected }}
       accessibilityLabel={describeWeekDay(day)}
       accessibilityHint={t('calendar.a11y.weekHint')}
     >
       <View style={styles.labelCol}>
-        <Text style={[styles.weekday, day.selected && styles.strong]}>{weekdayName(weekdayIndex(day.date) + 1, 'short')}</Text>
+        <Text style={[styles.weekday, selected && styles.strong]}>{weekdayName(weekdayIndex(day.date) + 1, 'short')}</Text>
         {/* Today: the date sits in a filled pill (a shape, not only a colour). */}
         <Text style={[styles.dayNumber, day.isToday && styles.todayNumber]}>{Number(day.date.slice(8))}.</Text>
       </View>

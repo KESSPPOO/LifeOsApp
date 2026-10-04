@@ -166,6 +166,9 @@ Ordered roughly by how much it blocks LifeOS.
 - ~~Overdue tasks vanished from the Tasks screen~~ — **fixed** this session.
 - ~~App crashed at launch with an empty Firebase key~~ — **fixed** this
   session.
+- *Session 10:* the shared schedule words (`src/features/schedule/`) still
+  use `timewheel.*` i18n keys, now read by Kalender too; rename them to
+  `schedule.*` in the planned translation/i18n session.
 - *Session 10:* routines on past dates (Kalender, Tidshjul) are projected
   from the CURRENT template; Kalender says so in a note. Fixing it needs
   template versions (e.g. `effectiveFrom` snapshots in `routines`), with a

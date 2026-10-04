@@ -235,12 +235,8 @@ export const da = {
   // ── Kalender (src/features/calendar) ──────────────────────────────────
   'calendar.mode.day':   'Dag',
   'calendar.mode.week':  'Uge',
-  'calendar.prevDay':    'Forrige dag',
-  'calendar.nextDay':    'Næste dag',
   'calendar.prevWeek':   'Forrige uge',
   'calendar.nextWeek':   'Næste uge',
-  'calendar.today':      'I dag',
-  'calendar.todayHint':  'Går tilbage til i dag',
   'calendar.newTask':    'Ny opgave',
   'calendar.newTaskHint': 'Ny opgave {day}',
   'calendar.untimed':    'Uden tidspunkt',

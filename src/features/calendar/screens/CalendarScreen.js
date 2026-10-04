@@ -14,12 +14,11 @@
 // sheet with the selected date filled in. Nothing is moved automatically.
 import React, { useCallback, useMemo, useReducer } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { Choice } from '../../../components/Choice';
 import { capitalize } from '../../../data/helpers';
 import { t, formatDateLong, formatRelativeDay } from '../../../core/i18n';
-import { localDateKey, daysBetween } from '../../../core/time/dates';
+import { localDateKey, daysBetween, startOfWeek } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
 import { useJournal } from '../../tasks/store';
@@ -29,6 +28,8 @@ import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 import { useEntryEditor } from '../../plan/useEntryEditor';
 import { clockFor } from '../../schedule/day';
 import { ConflictPanel } from '../../schedule/ConflictPanel';
+import { DateHeader } from '../../schedule/DateHeader';
+import { useScheduleItemActions } from '../../schedule/useScheduleItemActions';
 import {
   INITIAL_CALENDAR, calendarReducer, selectedDate, calendarTitle, buildCalendarDay, buildCalendarWeek,
 } from '../logic';
@@ -37,7 +38,6 @@ import { WeekStrip } from '../components/WeekStrip';
 import { ScheduleRow } from '../components/ScheduleRow';
 
 export default function CalendarScreen() {
-  const navigation = useNavigation();
   const journal = useJournal();
   const routines = useRoutines();
   const routineLog = useRoutineLog();
@@ -58,18 +58,15 @@ export default function CalendarScreen() {
     () => buildCalendarDay({ journal, routines, routineLog, date, today, nowMinutes: clock }),
     [journal, routines, routineLog, date, today, clock],
   );
+  // Keyed on the week, not the day: selecting another day only moves the highlight.
+  const monday = startOfWeek(date);
   const weekModel = useMemo(
-    () => (week ? buildCalendarWeek({ journal, routines, routineLog, date, today }) : null),
-    [week, journal, routines, routineLog, date, today],
+    () => (week ? buildCalendarWeek({ journal, routines, routineLog, date: monday, today }) : null),
+    [week, journal, routines, routineLog, monday, today],
   );
 
-  // Stable, so the memoised grid and week do not re-render on every tick.
-  const open = useCallback((item) => (item.kind === 'routine'
-    ? openChecklist(item)
-    : openEditor('task', item.task)), [openChecklist, openEditor]);
-  const move = (item) => (item.kind === 'routine'
-    ? navigation.navigate('routines', { editId: item.routineId })
-    : openEditor('task', item.task, { focus: 'time' }));
+  // The same open / "Flyt" as Tidshjul; open is stable for the memoised views.
+  const { open, move } = useScheduleItemActions({ openEditor, openChecklist });
   const select = useCallback((key) => dispatch({ type: 'select', date: key, today }), [today]);
   const step = (direction) => dispatch({ type: 'step', direction, today });
   const newTask = () => openEditor('task', { text: '', date });
@@ -81,38 +78,14 @@ export default function CalendarScreen() {
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* ── Date navigation ── */}
-        <View style={styles.nav}>
-          <TouchableOpacity
-            onPress={() => step(-1)}
-            style={styles.stepBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t(week ? 'calendar.prevWeek' : 'calendar.prevDay')}
-          >
-            <Text style={styles.stepText}>‹</Text>
-          </TouchableOpacity>
-          <View style={styles.titleCol}>
-            <Text style={styles.title} accessibilityRole="header">{title}</Text>
-            <Text style={styles.subline}>{[week ? null : relative, subline].filter(Boolean).join(' · ')}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => step(1)}
-            style={styles.stepBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t(week ? 'calendar.nextWeek' : 'calendar.nextDay')}
-          >
-            <Text style={styles.stepText}>›</Text>
-          </TouchableOpacity>
-        </View>
-        {state.date !== null ? (
-          <TouchableOpacity
-            onPress={() => dispatch({ type: 'today' })}
-            style={styles.todayBtn}
-            accessibilityRole="button"
-            accessibilityHint={t('calendar.todayHint')}
-          >
-            <Text style={styles.todayText}>{t('calendar.today')}</Text>
-          </TouchableOpacity>
-        ) : null}
+        <DateHeader
+          title={title}
+          subline={[week ? null : relative, subline].filter(Boolean).join(' · ')}
+          prevLabel={t(week ? 'calendar.prevWeek' : 'timewheel.prevDay')}
+          nextLabel={t(week ? 'calendar.nextWeek' : 'timewheel.nextDay')}
+          onStep={step}
+          onToday={state.date !== null ? () => dispatch({ type: 'today' }) : null}
+        />
 
         <View style={styles.controls}>
           <View style={styles.modes} accessibilityRole="radiogroup">
@@ -131,7 +104,7 @@ export default function CalendarScreen() {
 
         {week ? (
           <>
-            <WeekStrip week={weekModel} onSelect={select} />
+            <WeekStrip week={weekModel} selectedDate={date} onSelect={select} />
             {weekModel.projected ? <Text style={styles.note}>{t('calendar.projected')}</Text> : null}
             {weekModel.empty ? (
               <Text style={styles.quiet}>{t('calendar.weekOpen')}</Text>
@@ -195,18 +168,6 @@ function Untimed({ items, onOpen }) {
 const styles = StyleSheet.create({
   root:   { flex: 1, backgroundColor: COLORS.bg },
   scroll: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
-
-  nav:      { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  stepBtn:  { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  stepText: { fontSize: 30, color: COLORS.text, lineHeight: 34 },
-  titleCol: { flex: 1, alignItems: 'center' },
-  title:    { fontSize: 20, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
-  subline:  { fontSize: 14, color: COLORS.textMuted, marginTop: 4, textAlign: 'center' },
-  todayBtn: {
-    alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 18,
-    borderRadius: 22, borderWidth: 1, borderColor: COLORS.border2, marginBottom: 4,
-  },
-  todayText: { fontSize: 15, fontWeight: '600', color: COLORS.text },
 
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 8, marginBottom: 8 },
   modes:    { flexDirection: 'row' },
