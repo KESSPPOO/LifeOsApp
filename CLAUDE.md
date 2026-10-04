@@ -75,7 +75,7 @@ src/
                        screens/RoutinesScreen.js, components/RoutineSheet.js, ChecklistSheet.js
   features/plan/       Plan (route `journal`): logic.js (grouping, list operations, task
                        form validation, pure), screens/PlanScreen.js, components/TaskSheet.js,
-                       Composer.js, Choice.js; useEntryEditor.js (THE task/habit editor,
+                       Composer.js; useEntryEditor.js (THE task/habit editor,
                        also used by Timewheel)
   features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal /
                        useToggleEntry (ticks on the real current day) / useTickedThisVisit;

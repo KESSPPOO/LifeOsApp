@@ -272,12 +272,14 @@ test('I dag: routines not in NU/NÆSTE are listed with their progress; finished 
   const evening = routine({ id: 'evening', name: 'Aftenrutine', startTime: '22:30', durationMinutes: 30, steps: [{ id: 'e1', text: 'Sluk skærme' }] });
   const log = toggleStep([], 'evening', MON, 'e1');
   const d = today([task(1), task(2)], [routine(), evening], log, at('12:00'));
-  // The open morning routine's time has passed: like a timed task, it leads
-  // the untimed tasks of its day. The finished evening routine is listed.
-  assert.equal(d.now.routineId, 'morning');
-  assert.equal(describeItem(d.now, MON), 'Rutine · Ikke startet · Tidspunktet er passeret');
-  assert.equal(d.next.id, 1);
-  assert.deepEqual(d.routines.map(r => [r.routineId, describeItem(r, MON)]), [['evening', 'Rutine · Klaret']]);
+  // Regression: the morning routine's time has passed. Unlike a task it is
+  // not carried over, so it does not take NU; it is listed with its state.
+  assert.equal(d.now.id, 1);
+  assert.equal(d.next.id, 2);
+  assert.deepEqual(d.routines.map(r => [r.routineId, describeItem(r, MON)]), [
+    ['morning', 'Rutine · Ikke startet · Tidspunktet er passeret'],
+    ['evening', 'Rutine · Klaret'],
+  ]);
   // Not featured -> listed with its progress.
   const later = today([task(1), task(2)], [routine({ startTime: '20:00' }), evening], [], at('12:00'));
   assert.deepEqual(later.routines.map(r => [r.routineId, describeItem(r, MON)]), [['evening', 'Rutine · Ikke startet']]);
@@ -287,6 +289,37 @@ test('I dag: routines not in NU/NÆSTE are listed with their progress; finished 
 test('I dag: "Intet lige nu" when the next thing is a routine later today', () => {
   const d = today([], [routine({ startTime: '18:00' })], [], at('12:00'));
   assert.deepEqual([d.now, d.next.routineId, d.state], [null, 'morning', 'free']);
+});
+
+test('regression: a routine created after its time today never takes NU', () => {
+  const d = today([task(1, { priority: 'high' })], [routine({ activeFrom: MON, startTime: '07:00', durationMinutes: 30 })], [], at('20:00'));
+  assert.equal(d.now.id, 1);
+  assert.equal(d.next, null);
+  assert.equal(today([], [routine({ activeFrom: MON })], [], at('20:00')).now, null);
+});
+
+test('regression: a routine still running after midnight is NU on I dag and Tidshjul', () => {
+  const late = routine({ id: 'late', startTime: '23:00', durationMinutes: 120 });
+  const iDag = today([], [late], [], at('00:30'));
+  assert.deepEqual([iDag.now?.routineId, iDag.now?.date], ['late', '2026-10-04']);
+  const w = wheel([], [late], [], at('00:30')).focus;
+  assert.deepEqual(w.now, iDag.now);
+  // Once it has ended it is not carried over.
+  assert.notEqual(today([], [late], [], at('01:30')).now?.date, '2026-10-04');
+});
+
+test('regression: damaged log entries or steps never crash', () => {
+  const damaged = [{ routineId: 'morning', date: MON, completedStepIds: {} }, { routineId: 'morning', date: MON, completedStepIds: 3 }];
+  assert.equal(occurrenceFor(routine(), MON, damaged).doneCount, 0);
+  assert.doesNotThrow(() => today([], [routine()], damaged, at('07:45')));
+  const noText = routine({ steps: [{ id: 's1' }, { id: 's2', text: 'Børst tænder' }] });
+  const fields = readRoutineForm(formFromRoutine(noText)).fields;
+  assert.deepEqual(fields.steps, [{ id: 's2', text: 'Børst tænder' }]);
+});
+
+test('regression: a routine stores time fields by the same rule as a task (invalid values never)', () => {
+  const [stored] = addRoutine([], 'r', { name: 'X', enabled: true, daysOfWeek: [1], steps: [{ id: 'a', text: 'a' }], startTime: '7', durationMinutes: 'lang' }, MON);
+  assert.ok(!('startTime' in stored) && !('durationMinutes' in stored));
 });
 
 // ── Tidshjul ───────────────────────────────────────────────────────────────
@@ -334,6 +367,10 @@ test('Tidshjul: an untimed routine is never on the timeline; it is listed apart'
   const d = wheel([], [routine({ startTime: undefined })], [], at('09:00'));
   assert.deepEqual([d.items.length, d.flexibleRoutines.length, d.state], [0, 1, 'onlyFlexible']);
   assert.deepEqual(timelineRows(d), []);
+  // Regression: a finished untimed routine is not open work.
+  let log = [];
+  for (const id of ['s1', 's2', 's3', 's4']) log = toggleStep(log, 'morning', MON, id);
+  assert.equal(wheel([], [routine({ startTime: undefined })], log, at('09:00')).state, 'empty');
 });
 
 test('Tidshjul: a routine running past midnight shows on the next day too', () => {

@@ -149,12 +149,18 @@ export default function PlanScreen() {
         </Section>
 
         {/* Routines: their own small section, never mixed into the tasks. */}
-        <Section title={t('today.routines')}>
-          {routinesToday.map(item => (
-            <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={openChecklist} />
-          ))}
-          <LinkRow icon="🔁" label={t('routines.all')} onPress={() => navigation.navigate('routines')} style={styles.linkRow} />
-        </Section>
+        {routinesToday.length > 0 ? (
+          <Section title={t('today.routines')}>
+            {routinesToday.map(item => (
+              <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={openChecklist} />
+            ))}
+            <LinkRow icon="🔁" label={t('routines.all')} onPress={() => navigation.navigate('routines')} style={styles.linkRow} />
+          </Section>
+        ) : (
+          // Without routines today Plan keeps its task layout; one quiet
+          // link is the way to Rutiner.
+          <LinkRow icon="🔁" label={t('nav.routines')} onPress={() => navigation.navigate('routines')} style={styles.routinesLink} />
+        )}
 
         {plan.overdue.length > 0 ? (
           <Section title={t('plan.overdue')}>
@@ -342,6 +348,7 @@ const styles = StyleSheet.create({
   dotToday: { borderWidth: 2, borderColor: COLORS.textMuted },
 
   linkRow:      { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  routinesLink: { marginBottom: 24, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   hint:         { fontSize: 13, color: COLORS.textMuted, marginBottom: 8 },
   clearAll:     { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   clearAllText: { fontSize: 15, color: COLORS.red },

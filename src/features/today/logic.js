@@ -20,7 +20,7 @@
 import { compareDateStart, isTimed } from '../tasks/schedule.js';
 import { taskItem, dayProgress } from '../tasks/items.js';
 import { selectFocus } from '../tasks/focus.js';
-import { routineItemsOn } from '../routines/model.js';
+import { focusRoutineItems } from '../routines/model.js';
 import { addDays, isDateKey } from '../../core/time/dates.js';
 import { t, formatRelativeDay } from '../../core/i18n/index.js';
 
@@ -70,7 +70,7 @@ export function goalsNeedingAttention(goals, today) {
  * Plan shows).
  */
 export function buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds, routines = [], routineLog = [] }) {
-  const routineItems = routineItemsOn(routines, routineLog, today, today, nowMinutes);
+  const routineItems = focusRoutineItems(routines, routineLog, today, nowMinutes);
   const { now, next, groups, active, upcomingTimed, flexible, dueDone, habits } =
     selectFocus({ journal, today, nowMinutes, keepVisibleIds, routineItems });
   // (Parameters are named `task`, not `t`, which is the i18n lookup here.)

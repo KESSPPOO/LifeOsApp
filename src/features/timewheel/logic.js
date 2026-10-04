@@ -16,7 +16,7 @@
 import { isTimed, scheduleOn, findOverlaps } from '../tasks/schedule.js';
 import { taskItem, habitItem } from '../tasks/items.js';
 import { selectFocus } from '../tasks/focus.js';
-import { routineItemsOn } from '../routines/model.js';
+import { routineItemsOn, focusRoutineItems } from '../routines/model.js';
 import { addDays, daysBetween } from '../../core/time/dates.js';
 import { MINUTES_PER_DAY, minutesToTime } from '../../core/time/timeOfDay.js';
 import { t, formatDuration } from '../../core/i18n/index.js';
@@ -113,7 +113,10 @@ export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds, rou
 
   let focus = null;
   if (relation === 'today') {
-    const { now, next } = selectFocus({ journal, today, nowMinutes, keepVisibleIds, routineItems });
+    const { now, next } = selectFocus({
+      journal, today, nowMinutes, keepVisibleIds,
+      routineItems: focusRoutineItems(routines, routineLog, today, nowMinutes),
+    });
     focus = { now, next };
   } else if (relation === 'future') {
     focus = { first: items.find(item => !item.done && item.start >= 0) ?? null };
@@ -131,7 +134,7 @@ export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds, rou
     focus,
     nowMinute: relation === 'today' ? nowMinutes : null,
     done,
-    state: items.length === 0 ? (flexible.length + flexibleRoutines.length > 0 ? 'onlyFlexible' : 'empty')
+    state: items.length === 0 ? (flexible.length + flexibleRoutines.filter(r => !r.done).length > 0 ? 'onlyFlexible' : 'empty')
       : done === items.length ? 'allDone' : 'scheduled',
   };
 }

@@ -10,8 +10,10 @@
 // startTime / durationMinutes, so the same schedule rules sort them; a
 // routine has no priority, so it ranks like a medium task. There is no
 // preference by kind: equal keys keep tasks before routines (input order).
-// Finished occurrences never take part. With no routines the result is
-// exactly the task-only result.
+// Finished occurrences never take part, and neither does a routine whose
+// time has passed: unlike a task it is not carried over (it comes back on
+// its next day), so a missed or brand-new routine never takes NU. With no
+// routines the result is exactly the task-only result.
 //
 // The unfinished tasks dated today or earlier ("due") are split by their
 // schedule at `now` (./schedule.js):
@@ -75,7 +77,7 @@ export function selectFocus({ journal, today, nowMinutes, keepVisibleIds, routin
   const ofStatus = (status) => openRoutines.filter(routine => routine.status === status);
   const allActive = [...active, ...ofStatus('active')].sort(compareDateStart);
   const allUpcoming = [...upcomingTimed, ...ofStatus('upcoming')].sort(compareStart);
-  const allFlexible = rankDueTasks([...flexibleOpen, ...ofStatus('untimed'), ...ofStatus('past')]);
+  const allFlexible = rankDueTasks([...flexibleOpen, ...ofStatus('untimed')]);
 
   const queue = [...allActive.map(item), ...allFlexible.map(item), ...habits.filter(h => !h.done)];
   const now = queue[0] ?? null;

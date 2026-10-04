@@ -23,6 +23,8 @@ import { EVERY_DAY, DAY_PRESETS, readRoutineForm, toggleDay, moveStep, newId, sa
 export function RoutineSheet({ editing, initial, onSave, onDelete, onClose }) {
   const [form, setForm] = useState(initial);
   const [error, setError] = useState(null);
+  // The step just added gets the keyboard.
+  const [focusStepId, setFocusStepId] = useState(null);
   const update = (patch) => { setForm(f => ({ ...f, ...patch })); setError(null); };
   const setSteps = (fn) => { setForm(f => ({ ...f, steps: fn(f.steps) })); setError(null); };
 
@@ -88,7 +90,7 @@ export function RoutineSheet({ editing, initial, onSave, onDelete, onClose }) {
                   placeholderTextColor={COLORS.textMuted}
                   value={step.text}
                   onChangeText={(text) => setSteps(steps => steps.map(s => (s.id === step.id ? { ...s, text } : s)))}
-                  autoFocus={step.text === '' && index === form.steps.length - 1 && index > 0}
+                  autoFocus={step.id === focusStepId}
                   accessibilityLabel={t('routine.form.stepLabel', { n: index + 1 })}
                 />
                 <StepButton
@@ -111,7 +113,11 @@ export function RoutineSheet({ editing, initial, onSave, onDelete, onClose }) {
               </View>
             ))}
             <TouchableOpacity
-              onPress={() => setSteps(steps => [...steps, { id: newId(), text: '' }])}
+              onPress={() => {
+                const id = newId();
+                setFocusStepId(id);
+                setSteps(steps => [...steps, { id, text: '' }]);
+              }}
               style={styles.addStep}
               accessibilityRole="button"
             >

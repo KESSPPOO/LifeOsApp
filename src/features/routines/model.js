@@ -20,11 +20,11 @@
 // template, so editing a routine's days, time or steps also changes how
 // past dates are shown (their logs are kept, but only steps that still
 // exist count). Disabling a routine hides it on every date.
-import { isDateKey, weekdayIndex } from '../../core/time/dates.js';
+import { isDateKey, weekdayIndex, addDays } from '../../core/time/dates.js';
 import { isTimeOfDay } from '../../core/time/timeOfDay.js';
 import { t, formatDuration, weekdayName } from '../../core/i18n/index.js';
 import {
-  isValidDuration, scheduleStatus, scheduleFormValues, readScheduleInput, endTime,
+  isValidDuration, scheduleStatus, scheduleFormValues, readScheduleInput, endTime, withTimeFields,
 } from '../tasks/schedule.js';
 import { scheduleLabel } from '../tasks/items.js';
 
@@ -62,7 +62,8 @@ const findLog = (log, routineId, date) =>
  * when valid.
  */
 export function occurrenceFor(routine, date, log) {
-  const completed = new Set(findLog(log, routine.id, date)?.completedStepIds ?? []);
+  const ids = findLog(log, routine.id, date)?.completedStepIds;
+  const completed = new Set(Array.isArray(ids) ? ids : []);
   const steps = stepsOf(routine).map(step => ({ id: step.id, text: step.text, done: completed.has(step.id) }));
   const doneCount = steps.filter(step => step.done).length;
   const startTime = isTimeOfDay(routine.startTime) ? routine.startTime : null;
@@ -107,6 +108,18 @@ export function routineItem(occurrence, today, nowMinutes) {
 /** routineItem for every routine occurring on `date` (the one builder I dag and Tidshjul use). */
 export function routineItemsOn(routines, log, date, today, nowMinutes) {
   return occurrencesOn(routines, log, date).map(occurrence => routineItem(occurrence, today, nowMinutes));
+}
+
+/**
+ * The routine items NU / NÆSTE consider on `today`: today's, plus
+ * yesterday's while still running past midnight (like a task crossing
+ * midnight). Yesterday's are not carried over otherwise: a routine comes
+ * back on its next day instead.
+ */
+export function focusRoutineItems(routines, log, today, nowMinutes) {
+  const stillRunning = routineItemsOn(routines, log, addDays(today, -1), today, nowMinutes)
+    .filter(item => item.status === 'active');
+  return [...stillRunning, ...routineItemsOn(routines, log, today, today, nowMinutes)];
 }
 
 /** 'Ikke startet', '2 af 5 trin' or 'Klaret'. */
@@ -174,14 +187,7 @@ export function deleteRoutine(list, id) {
 
 /** Like a task: time fields are only stored when set (none -> no keys). */
 function withRoutineFields(base, { name, enabled, daysOfWeek, startTime, durationMinutes, steps }) {
-  const next = { ...base, name, enabled, daysOfWeek, steps };
-  delete next.startTime;
-  delete next.durationMinutes;
-  if (startTime) {
-    next.startTime = startTime;
-    if (durationMinutes) next.durationMinutes = durationMinutes;
-  }
-  return next;
+  return withTimeFields({ ...base, name, enabled, daysOfWeek, steps }, { startTime, durationMinutes });
 }
 
 // ── The routine form ─────────────────────────────────────────────────────
@@ -193,7 +199,7 @@ export function formFromRoutine(routine) {
     name: routine?.name ?? '',
     enabled: routine?.enabled ?? true,
     daysOfWeek: routine ? [...daysOf(routine)] : [...EVERY_DAY],
-    steps: routine ? stepsOf(routine).map(step => ({ ...step })) : [],
+    steps: routine ? stepsOf(routine).map(step => ({ ...step, text: typeof step.text === 'string' ? step.text : '' })) : [],
     ...scheduleFormValues(routine?.startTime, routine?.durationMinutes),
   };
 }
@@ -207,7 +213,7 @@ export function readRoutineForm(form) {
   if (!name) return { error: 'routine.form.missingName' };
   const daysOfWeek = EVERY_DAY.filter(day => form.daysOfWeek.includes(day));
   if (daysOfWeek.length === 0) return { error: 'routine.form.missingDays' };
-  const steps = form.steps.map(step => ({ id: step.id, text: step.text.trim() })).filter(step => step.text);
+  const steps = form.steps.map(step => ({ id: step.id, text: String(step.text ?? '').trim() })).filter(step => step.text);
   if (steps.length === 0) return { error: 'routine.form.missingSteps' };
   const schedule = readScheduleInput(form);
   if (schedule.error) return schedule;

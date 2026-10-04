@@ -460,10 +460,15 @@ pollute Plan and need a background job.
   task, so `src/features/tasks/schedule.js` (status, ordering, overlaps)
   works on both unchanged. `routineItem` adds the same presentation
   fields as `taskItem` (endTime, timeLabel, status) plus `kind:
-  'routine'` and progress. NU/NÆSTE (`selectFocus`), I dag and Tidshjul
-  take routine items next to tasks; there is no preference by kind
-  (equal keys keep tasks first, as input order). With no routines every
-  output is exactly what it was (tests assert this).
+  'routine'`, a kindLabel and progress text. NU/NÆSTE (`selectFocus`),
+  I dag and Tidshjul take routine items next to tasks; there is no
+  preference by kind (equal keys keep tasks first, as input order). An
+  active routine (also yesterday's, still running after midnight) can be
+  NU, the earliest later one NÆSTE, an untimed one a flexible item; a
+  finished routine, or one whose time has passed, never takes part: it is
+  not carried over like a task, it comes back on its next day (so a
+  routine created after its time today does not jump to NU). With no
+  routines every output is exactly what it was (tests assert this).
 - **Interaction:** tapping a routine anywhere opens that day's checklist
   (`useRoutineChecklist`); the template is edited only on the Rutiner
   screen (route `routines`, secondary: Mere → Livet, plus links from Plan

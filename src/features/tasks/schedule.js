@@ -101,11 +101,20 @@ export function compareDateStart(a, b) {
  * with a start time, and a time only on a task that can be timed (dated,
  * not a habit).
  */
-export function withSchedule(task, { startTime, durationMinutes }) {
-  const next = { ...task };
+export function withSchedule(task, fields) {
+  return withTimeFields(task, canBeTimed(task) ? fields : {});
+}
+
+/**
+ * The rule behind withSchedule, for anything with optional time fields (a
+ * task, a routine template): only a valid startTime is stored, a duration
+ * only with it, and absent values are removed, never stored as null.
+ */
+export function withTimeFields(source, { startTime, durationMinutes }) {
+  const next = { ...source };
   delete next.startTime;
   delete next.durationMinutes;
-  if (!canBeTimed(next) || !isTimeOfDay(startTime)) return next;
+  if (!isTimeOfDay(startTime)) return next;
   next.startTime = startTime;
   if (isValidDuration(durationMinutes)) next.durationMinutes = durationMinutes;
   return next;

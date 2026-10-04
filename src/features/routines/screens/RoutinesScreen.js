@@ -38,7 +38,10 @@ export default function RoutinesScreen() {
 
   const openEditor = (routine) => {
     editorKey.current += 1;
-    setEditor({ key: editorKey.current, id: routine?.id ?? null, initial: formFromRoutine(routine) });
+    const initial = formFromRoutine(routine);
+    // A new routine starts with one empty step to fill in.
+    if (!routine) initial.steps = [{ id: newId(), text: '' }];
+    setEditor({ key: editorKey.current, id: routine?.id ?? null, initial });
   };
   const { openChecklist, checklistElement } = useRoutineChecklist();
   // Today's occurrence per routine (those that occur today).
