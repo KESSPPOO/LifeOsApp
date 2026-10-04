@@ -165,6 +165,11 @@ Ordered roughly by how much it blocks LifeOS.
 - ~~Overdue tasks vanished from the Tasks screen~~ — **fixed** this session.
 - ~~App crashed at launch with an empty Firebase key~~ — **fixed** this
   session.
+- *Session 9:* `routineLog` grows by about one entry per routine per day
+  and is never pruned (history is kept on purpose). Like every list store
+  it is rewritten whole on each tick: fine for years of a few routines,
+  but archive or split it (e.g. per month) before it reaches several
+  thousand entries, or when the SQLite move happens.
 - Habit `streak` is a cached value that is only recomputed on toggle, so
   Stats shows stale streaks after a missed day. (*Session 7:* Plan's habit
   row computes the streak instead of reading the cache.)

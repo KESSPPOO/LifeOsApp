@@ -46,7 +46,8 @@ metro.config.js        Disables package "exports" resolution (needed by firebase
 eas.json               EAS build profiles
 eslint.config.js       Expo ESLint config
 src/
-  app/                 App-shell pieces: ErrorBoundary (root fallback, Danish)
+  app/                 App-shell pieces: ErrorBoundary (root fallback, Danish), confirmDelete
+                       (the one Danish delete confirmation, a CustomAlert config)
   app/navigation/      AppNavigator (NavigationContainer + tab navigator), ShellLayout
                        (top bar, "Tilbage" on secondary screens), BottomNav (bottom bar),
                        MoreScreen (Mere: every non-tab screen, grouped)

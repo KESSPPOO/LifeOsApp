@@ -15,7 +15,7 @@ import {
 import { COLORS } from '../../../config/colors';
 import { GlassSheet } from '../../../components/GlassSheet';
 import { Choice } from '../../../components/Choice';
-import { t } from '../../../core/i18n';
+import { t, weekdayName } from '../../../core/i18n';
 import { MAX_DURATION_MINUTES } from '../../tasks/schedule';
 import { ScheduleFields } from '../../tasks/components/ScheduleFields';
 import { EVERY_DAY, DAY_PRESETS, readRoutineForm, toggleDay, moveStep, newId, sameDays } from '../model';
@@ -69,8 +69,8 @@ export function RoutineSheet({ editing, initial, onSave, onDelete, onClose }) {
                 <Choice
                   key={day}
                   role="checkbox"
-                  label={t(`routine.dayLetter.${day}`)}
-                  accessibilityLabel={t(`routine.dayName.${day}`)}
+                  label={weekdayName(day, 'letter')}
+                  accessibilityLabel={weekdayName(day)}
                   selected={form.daysOfWeek.includes(day)}
                   onPress={() => update({ daysOfWeek: toggleDay(form.daysOfWeek, day) })}
                 />

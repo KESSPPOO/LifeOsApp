@@ -12,6 +12,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { CustomAlert } from '../../components/CustomAlert';
 import { t } from '../../core/i18n';
+import { confirmDelete } from '../../app/confirmDelete';
 import { useSetJournal } from '../tasks/store';
 import { addTask, updateTask, addHabit, updateHabit, deleteEntry, formFromEntry } from './logic';
 import { TaskSheet } from './components/TaskSheet';
@@ -41,18 +42,11 @@ export function useEntryEditor({ today, sync }) {
     setSheet(null);
   };
 
-  const confirmDelete = () => setAlertConfig({
-    title: t('taskForm.delete'),
+  const askDelete = () => setAlertConfig(confirmDelete({
     message: t('taskForm.deleteMessage', { title: sheet.initial.text }),
-    buttons: [
-      { text: t('taskForm.cancel'), style: 'cancel', onPress: closeAlert },
-      { text: t('taskForm.delete'), style: 'destructive', onPress: () => {
-        setJournal(prev => deleteEntry(prev, sheet.id));
-        closeAlert();
-        setSheet(null);
-      } },
-    ],
-  });
+    onConfirm: () => { setJournal(prev => deleteEntry(prev, sheet.id)); setSheet(null); },
+    close: closeAlert,
+  }));
 
   const editorElements = (
     <>
@@ -65,7 +59,7 @@ export function useEntryEditor({ today, sync }) {
           focus={sheet.focus}
           today={today}
           onSave={save}
-          onDelete={confirmDelete}
+          onDelete={askDelete}
           onClose={() => setSheet(null)}
         />
       ) : null}

@@ -22,11 +22,11 @@
 // exist count). Disabling a routine hides it on every date.
 import { isDateKey, weekdayIndex } from '../../core/time/dates.js';
 import { isTimeOfDay } from '../../core/time/timeOfDay.js';
-import { t, formatDuration } from '../../core/i18n/index.js';
+import { t, formatDuration, weekdayName } from '../../core/i18n/index.js';
 import {
   isValidDuration, scheduleStatus, scheduleFormValues, readScheduleInput, endTime,
 } from '../tasks/schedule.js';
-import { scheduleLabel, describeRoutineProgress } from '../tasks/items.js';
+import { scheduleLabel } from '../tasks/items.js';
 
 export const EVERY_DAY = [1, 2, 3, 4, 5, 6, 7];
 export const WEEKDAYS = [1, 2, 3, 4, 5];
@@ -50,23 +50,22 @@ export function routineOccursOnDate(routine, date) {
 }
 
 /** The log entry for a routine on a date, or undefined. */
-export const findLog = (log, routineId, date) =>
+const findLog = (log, routineId, date) =>
   log.find(entry => entry.routineId === routineId && entry.date === date);
 
 /**
  * The routine on `date`, with that day's progress from `log`:
  * { kind: 'routine', id: '<routineId>@<date>', routineId, date, title,
  *   startTime, durationMinutes, steps: [{ id, text, done }], doneCount,
- *   stepCount, done, state: 'notStarted' | 'inProgress' | 'complete' }.
- * Only steps that exist now count (a log may name deleted steps).
- * startTime / durationMinutes are only set when valid.
+ *   done } (done = every step ticked). Only steps that exist now count (a
+ * log may name deleted steps). startTime / durationMinutes are only set
+ * when valid.
  */
 export function occurrenceFor(routine, date, log) {
   const completed = new Set(findLog(log, routine.id, date)?.completedStepIds ?? []);
   const steps = stepsOf(routine).map(step => ({ id: step.id, text: step.text, done: completed.has(step.id) }));
   const doneCount = steps.filter(step => step.done).length;
   const startTime = isTimeOfDay(routine.startTime) ? routine.startTime : null;
-  const done = steps.length > 0 && doneCount === steps.length;
   return {
     kind: 'routine',
     id: `${routine.id}@${date}`,
@@ -77,21 +76,22 @@ export function occurrenceFor(routine, date, log) {
     durationMinutes: startTime && isValidDuration(routine.durationMinutes) ? routine.durationMinutes : null,
     steps,
     doneCount,
-    stepCount: steps.length,
-    done,
-    state: done ? 'complete' : doneCount > 0 ? 'inProgress' : 'notStarted',
+    done: steps.length > 0 && doneCount === steps.length,
   };
 }
 
 /** Every routine's occurrence on `date`, in the routines' own order. */
 export function occurrencesOn(routines, log, date) {
-  return routines.filter(routine => routineOccursOnDate(routine, date)).map(routine => occurrenceFor(routine, date, log));
+  const dayLog = log.filter(entry => entry.date === date); // one pass over the log
+  return routines.filter(routine => routineOccursOnDate(routine, date)).map(routine => occurrenceFor(routine, date, dayLog));
 }
 
 /**
- * An occurrence as a day item for NU / NÆSTE, I dag and Tidshjul: the
- * occurrence plus endTime, timeLabel and status at (today, nowMinutes),
- * like a task item (src/features/tasks/items.js).
+ * An occurrence as a day item for NU / NÆSTE, I dag, Tidshjul and Plan:
+ * the occurrence plus what every day item has (endTime, timeLabel, status
+ * at (today, nowMinutes), like a task item in src/features/tasks/items.js)
+ * and its own words (kindLabel 'Rutine', progressText), which the shared
+ * descriptions print without knowing about routines.
  */
 export function routineItem(occurrence, today, nowMinutes) {
   return {
@@ -99,18 +99,29 @@ export function routineItem(occurrence, today, nowMinutes) {
     endTime: endTime(occurrence),
     timeLabel: scheduleLabel(occurrence),
     status: scheduleStatus(occurrence, today, nowMinutes),
+    kindLabel: t('routine.kind'),
+    progressText: describeProgress(occurrence),
   };
 }
 
+/** routineItem for every routine occurring on `date` (the one builder I dag and Tidshjul use). */
+export function routineItemsOn(routines, log, date, today, nowMinutes) {
+  return occurrencesOn(routines, log, date).map(occurrence => routineItem(occurrence, today, nowMinutes));
+}
+
 /** 'Ikke startet', '2 af 5 trin' or 'Klaret'. */
-export const describeProgress = describeRoutineProgress;
+export function describeProgress(occurrence) {
+  if (occurrence.done) return t('routine.complete');
+  if (occurrence.doneCount === 0) return t('routine.notStarted');
+  return t('routine.progress', { done: occurrence.doneCount, total: occurrence.steps.length });
+}
 
 /** 'Hver dag', 'Hverdage', 'Weekend' or 'Man · Ons · Fre'. */
 export function describeDays(daysOfWeek) {
   const days = Array.isArray(daysOfWeek) ? daysOfWeek : [];
   const preset = DAY_PRESETS.find(([, presetDays]) => sameDays(days, presetDays));
   if (preset) return t(preset[0]);
-  return [...days].sort((a, b) => a - b).map(day => t(`routine.dayShort.${day}`)).join(' · ');
+  return [...days].sort((a, b) => a - b).map(day => weekdayName(day, 'short')).join(' · ');
 }
 
 /** The quiet line on a routine in the list: '07:30 · 45 min · Hverdage · 4 trin'. */
@@ -132,11 +143,14 @@ export function describeRoutine(routine) {
  * untouched, and the template never changes.
  */
 export function toggleStep(log, routineId, date, stepId) {
-  const entry = findLog(log, routineId, date);
-  if (!entry) return [...log, { routineId, date, completedStepIds: [stepId] }];
+  const index = log.findIndex(entry => entry.routineId === routineId && entry.date === date);
+  if (index === -1) return [...log, { routineId, date, completedStepIds: [stepId] }];
+  const entry = log[index];
   const ids = Array.isArray(entry.completedStepIds) ? entry.completedStepIds : [];
   const completedStepIds = ids.includes(stepId) ? ids.filter(id => id !== stepId) : [...ids, stepId];
-  return log.map(other => (other === entry ? { ...entry, completedStepIds } : other));
+  const next = [...log];
+  next[index] = { ...entry, completedStepIds };
+  return next;
 }
 
 // ── Templates ────────────────────────────────────────────────────────────

@@ -10,13 +10,11 @@ import { GlassSheet } from '../../../components/GlassSheet';
 import { CheckButton } from '../../../components/CheckButton';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { t, formatDateLong } from '../../../core/i18n';
-import { endTime } from '../../tasks/schedule';
-import { describeRoutineProgress } from '../../tasks/items';
+import { scheduleLabel } from '../../tasks/items';
+import { describeProgress } from '../model';
 
 export function ChecklistSheet({ occurrence, onToggle, onEdit, onClose }) {
-  const end = endTime(occurrence);
-  const time = occurrence.startTime ? (end ? `${occurrence.startTime}–${end}` : occurrence.startTime) : null;
-  const pct = occurrence.stepCount ? (occurrence.doneCount / occurrence.stepCount) * 100 : 0;
+  const pct = occurrence.steps.length ? (occurrence.doneCount / occurrence.steps.length) * 100 : 0;
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.wrapper}>
@@ -29,8 +27,8 @@ export function ChecklistSheet({ occurrence, onToggle, onEdit, onClose }) {
         />
         <GlassSheet>
           <Text style={styles.title} accessibilityRole="header">{occurrence.title}</Text>
-          <Text style={styles.subline}>{[formatDateLong(occurrence.date), time].filter(Boolean).join(' · ')}</Text>
-          <Text style={styles.progress} accessibilityLiveRegion="polite">{describeRoutineProgress(occurrence)}</Text>
+          <Text style={styles.subline}>{[formatDateLong(occurrence.date), scheduleLabel(occurrence)].filter(Boolean).join(' · ')}</Text>
+          <Text style={styles.progress} accessibilityLiveRegion="polite">{describeProgress(occurrence)}</Text>
           <ProgressBar pct={pct} color={COLORS.green} />
 
           <ScrollView style={styles.steps}>

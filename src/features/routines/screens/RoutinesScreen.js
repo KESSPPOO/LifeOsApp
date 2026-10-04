@@ -5,18 +5,18 @@
 // today's checklist for a routine that occurs today. Reached from Mere,
 // Plan, and "Rediger rutinen" on a checklist (route param editId opens that
 // routine's editor). Nothing is created without the user: no demo routines.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { CustomAlert } from '../../../components/CustomAlert';
+import { confirmDelete } from '../../../app/confirmDelete';
 import { t } from '../../../core/i18n';
 import { localDateKey } from '../../../core/time/dates';
 import { useNow } from '../../../core/time/useNow';
 import { useRoutines, useSetRoutines, useRoutineLog } from '../store';
 import {
-  addRoutine, updateRoutine, deleteRoutine, formFromRoutine, routineOccursOnDate, occurrenceFor,
-  describeRoutine, describeProgress, newId,
+  addRoutine, updateRoutine, deleteRoutine, formFromRoutine, occurrencesOn, describeRoutine, describeProgress, newId,
 } from '../model';
 import { useRoutineChecklist } from '../useRoutineChecklist';
 import { RoutineSheet } from '../components/RoutineSheet';
@@ -40,9 +40,12 @@ export default function RoutinesScreen() {
     editorKey.current += 1;
     setEditor({ key: editorKey.current, id: routine?.id ?? null, initial: formFromRoutine(routine) });
   };
-  const { openChecklist, checklistElement } = useRoutineChecklist({
-    onEdit: (id) => openEditor(routines.find(r => r.id === id)),
-  });
+  const { openChecklist, checklistElement } = useRoutineChecklist();
+  // Today's occurrence per routine (those that occur today).
+  const todayById = useMemo(
+    () => new Map(occurrencesOn(routines, log, today).map(o => [o.routineId, o])),
+    [routines, log, today],
+  );
 
   // "Rediger rutinen" from a checklist elsewhere arrives as route param editId.
   const editId = route.params?.editId;
@@ -60,20 +63,13 @@ export default function RoutinesScreen() {
     setEditor(null);
   };
 
-  const confirmDelete = () => {
+  const askDelete = () => {
     const { id, initial } = editor;
-    setAlertConfig({
-      title: t('taskForm.delete'),
+    setAlertConfig(confirmDelete({
       message: t('routine.form.deleteMessage', { name: initial.name }),
-      buttons: [
-        { text: t('taskForm.cancel'), style: 'cancel', onPress: closeAlert },
-        { text: t('taskForm.delete'), style: 'destructive', onPress: () => {
-          setRoutines(prev => deleteRoutine(prev, id));
-          closeAlert();
-          setEditor(null);
-        } },
-      ],
-    });
+      onConfirm: () => { setRoutines(prev => deleteRoutine(prev, id)); setEditor(null); },
+      close: closeAlert,
+    }));
   };
 
   return (
@@ -89,8 +85,8 @@ export default function RoutinesScreen() {
             <Text style={styles.emptyBody}>{t('routines.empty.body')}</Text>
           </View>
         ) : routines.map(routine => {
-          const occursToday = routineOccursOnDate(routine, today);
-          const progress = occursToday ? describeProgress(occurrenceFor(routine, today, log)) : null;
+          const occurrence = todayById.get(routine.id);
+          const progress = occurrence ? describeProgress(occurrence) : null;
           const meta = describeRoutine(routine);
           return (
             <View key={routine.id} style={styles.row}>
@@ -107,9 +103,9 @@ export default function RoutinesScreen() {
                 {!routine.enabled ? <Text style={styles.meta}>⏸ {t('routine.paused')}</Text> : null}
                 {progress ? <Text style={styles.today}>{t('routines.today', { progress })}</Text> : null}
               </TouchableOpacity>
-              {occursToday ? (
+              {occurrence ? (
                 <TouchableOpacity
-                  onPress={() => openChecklist(routine.id, today)}
+                  onPress={() => openChecklist(occurrence)}
                   style={styles.todayBtn}
                   accessibilityRole="button"
                   accessibilityLabel={t('routines.openTodayLabel', { name: routine.name })}
@@ -128,7 +124,7 @@ export default function RoutinesScreen() {
           editing={editor.id !== null}
           initial={editor.initial}
           onSave={save}
-          onDelete={confirmDelete}
+          onDelete={askDelete}
           onClose={() => setEditor(null)}
         />
       ) : null}

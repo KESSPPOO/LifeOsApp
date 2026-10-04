@@ -14,9 +14,9 @@
 // in time: it has no end and never becomes an interval. Untimed tasks are
 // never items; they are listed separately as "flexible".
 import { isTimed, scheduleOn, findOverlaps } from '../tasks/schedule.js';
-import { taskItem, habitItem, describeRoutineProgress } from '../tasks/items.js';
+import { taskItem, habitItem } from '../tasks/items.js';
 import { selectFocus } from '../tasks/focus.js';
-import { occurrencesOn, routineItem } from '../routines/model.js';
+import { routineItemsOn } from '../routines/model.js';
 import { addDays, daysBetween } from '../../core/time/dates.js';
 import { MINUTES_PER_DAY, minutesToTime } from '../../core/time/timeOfDay.js';
 import { t, formatDuration } from '../../core/i18n/index.js';
@@ -30,9 +30,9 @@ const MIN_GAP_MINUTES = 30;
  * item (src/features/tasks/items.js) plus the stored `task` (for the
  * editor); a routine item is routineItem (kind 'routine'). Both get
  * `start` / `end` in minutes from `date`'s midnight (end null = a point).
- * `occurrences`: routine occurrences of `date` and the day before.
+ * `routineItems`: routine items of `date` and the day before.
  */
-function dayItems(journal, occurrences, date, today, nowMinutes) {
+function dayItems(journal, routineItems, date, today, nowMinutes) {
   const previousDay = addDays(date, -1);
   const items = [];
   const add = (source, toItem) => {
@@ -43,7 +43,7 @@ function dayItems(journal, occurrences, date, today, nowMinutes) {
     items.push({ ...toItem(source), start: span.start, end: span.end });
   };
   for (const task of journal) add(task, (source) => ({ ...taskItem(source, today, nowMinutes), task: source }));
-  for (const occurrence of occurrences) add(occurrence, (source) => routineItem(source, today, nowMinutes));
+  for (const routine of routineItems) add(routine, (source) => source);
   return items.sort((a, b) => a.start - b.start || (a.end ?? a.start) - (b.end ?? b.start));
 }
 
@@ -97,10 +97,10 @@ function placeItems(items) {
  *              (every timed item finished) or 'scheduled'
  */
 export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds, routines = [], routineLog = [] }) {
-  const occurrences = occurrencesOn(routines, routineLog, date);
-  const occurrencesBefore = occurrencesOn(routines, routineLog, addDays(date, -1));
-  const { items, conflicts } = placeItems(dayItems(journal, [...occurrencesBefore, ...occurrences], date, today, nowMinutes));
-  const flexibleRoutines = occurrences.filter(o => o.startTime === null).map(o => routineItem(o, today, nowMinutes));
+  const routineItems = routineItemsOn(routines, routineLog, date, today, nowMinutes);
+  const routinesBefore = routineItemsOn(routines, routineLog, addDays(date, -1), today, nowMinutes);
+  const { items, conflicts } = placeItems(dayItems(journal, [...routinesBefore, ...routineItems], date, today, nowMinutes));
+  const flexibleRoutines = routineItems.filter(item => item.startTime === null);
   const relation = date === today ? 'today' : date < today ? 'past' : 'future';
   const onTimeline = new Set(items.map(item => item.id));
   const flexible = journal.filter(task =>
@@ -113,7 +113,6 @@ export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds, rou
 
   let focus = null;
   if (relation === 'today') {
-    const routineItems = occurrences.map(o => routineItem(o, today, nowMinutes));
     const { now, next } = selectFocus({ journal, today, nowMinutes, keepVisibleIds, routineItems });
     focus = { now, next };
   } else if (relation === 'future') {
@@ -210,13 +209,12 @@ export function timeRange(item) {
   return { start: minutesToTime(item.start), end: item.end === null ? '' : minutesToTime(item.end) };
 }
 
-/** What an item's bar shows, in words: length, rutine + progress, crossing midnight, i gang, klaret. */
+/** What an item's bar shows, in words: length, kind + progress (a routine), crossing midnight, i gang, klaret. */
 export function itemDetails(item) {
-  const routine = item.kind === 'routine';
   return [
     item.end === null ? t('timewheel.point') : formatDuration(item.end - item.start),
-    routine ? t('routine.kind') : null,
-    routine && !item.done ? describeRoutineProgress(item) : null,
+    item.kindLabel ?? null,
+    item.done ? null : item.progressText ?? null,
     item.start < 0 ? t('timewheel.fromYesterday') : null,
     item.end > MINUTES_PER_DAY ? t('timewheel.untilTomorrow') : null,
     item.done ? t('timewheel.done') : item.status === 'active' ? t('timewheel.active') : null,

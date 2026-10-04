@@ -3,8 +3,9 @@
 // How a task, habit or routine occurrence is presented: item shapes and
 // one Danish description, shared by I dag, Plan and Tidshjul so the
 // screens always agree on an item's state ("I gang til 11:45", "Fra i går",
-// "2 af 5 trin", …). Pure; "now" is passed in. (Routine items are built in
-// src/features/routines/model.js.)
+// "2 af 5 trin", …). Pure; "now" is passed in. Routine items are built in
+// src/features/routines/model.js and carry their own kindLabel and
+// progressText, so nothing here knows about routines.
 import { getSchedule, scheduleStatus, endTime } from './schedule.js';
 import { minutesToTime } from '../../core/time/timeOfDay.js';
 import { t, formatRelativeDay, formatDuration } from '../../core/i18n/index.js';
@@ -46,13 +47,6 @@ export function habitItem(habit, today) {
   return { kind: 'habit', id: habit.id, title: habit.text, icon: habit.icon, done: Boolean(habit.history?.[today]) };
 }
 
-/** A routine occurrence's progress: 'Ikke startet', '2 af 5 trin' or 'Klaret'. */
-export function describeRoutineProgress(item) {
-  if (item.state === 'complete') return t('routine.complete');
-  if (item.state === 'notStarted') return t('routine.notStarted');
-  return t('routine.progress', { done: item.doneCount, total: item.stepCount });
-}
-
 /**
  * The quiet line under an item's title, e.g. 'I gang til 11:45',
  * 'Fra i går · Vigtig' or 'Rutine · 2 af 5 trin'. (The time itself is
@@ -62,7 +56,8 @@ export function describeRoutineProgress(item) {
 export function describeItem(item, today, { plannedDay = true } = {}) {
   const parts = [];
   if (item.kind === 'habit') parts.push(t('task.meta.habit'));
-  if (item.kind === 'routine') parts.push(t('routine.kind'), describeRoutineProgress(item));
+  // Other kinds (a routine) bring their own words: 'Rutine', '2 af 5 trin'.
+  if (item.kindLabel) parts.push(item.kindLabel, item.progressText);
   if (!item.done && item.status === 'active') parts.push(t('task.meta.activeUntil', { time: item.endTime }));
   if (!item.done && item.status === 'past' && item.date === today) parts.push(t('task.meta.timePassed'));
   if (item.carriedOver) parts.push(t('task.meta.carriedOver', { day: formatRelativeDay(item.date, today) }));

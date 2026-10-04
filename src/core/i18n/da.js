@@ -198,12 +198,7 @@ export const da = {
   'routine.days.everyDay': 'Hver dag',
   'routine.days.weekdays': 'Hverdage',
   'routine.days.weekend':  'Weekend',
-  'routine.dayShort.1': 'Man', 'routine.dayShort.2': 'Tir', 'routine.dayShort.3': 'Ons', 'routine.dayShort.4': 'Tor',
-  'routine.dayShort.5': 'Fre', 'routine.dayShort.6': 'Lør', 'routine.dayShort.7': 'Søn',
-  'routine.dayLetter.1': 'M', 'routine.dayLetter.2': 'T', 'routine.dayLetter.3': 'O', 'routine.dayLetter.4': 'T',
-  'routine.dayLetter.5': 'F', 'routine.dayLetter.6': 'L', 'routine.dayLetter.7': 'S',
-  'routine.dayName.1': 'Mandag', 'routine.dayName.2': 'Tirsdag', 'routine.dayName.3': 'Onsdag', 'routine.dayName.4': 'Torsdag',
-  'routine.dayName.5': 'Fredag', 'routine.dayName.6': 'Lørdag', 'routine.dayName.7': 'Søndag',
+
 
   'routines.new':        'Ny rutine',
   'routines.empty.title': 'Du har ingen rutiner endnu',

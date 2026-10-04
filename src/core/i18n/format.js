@@ -16,6 +16,16 @@ const MONTHS = [
   'juli', 'august', 'september', 'oktober', 'november', 'december',
 ];
 
+/**
+ * The name of an ISO weekday (1 = mandag … 7 = søndag), capitalised:
+ * 'long' 'Mandag', 'short' 'Man', 'letter' 'M'.
+ */
+export function weekdayName(isoDay, form = 'long') {
+  const name = WEEKDAYS[isoDay - 1];
+  const text = form === 'letter' ? name.slice(0, 1) : form === 'short' ? name.slice(0, 3) : name;
+  return text[0].toUpperCase() + text.slice(1);
+}
+
 /** '2026-10-03' -> '3. oktober' (with the year when it differs from `today`'s). */
 export function formatDayMonth(key, today) {
   const d = parseDateKey(key);

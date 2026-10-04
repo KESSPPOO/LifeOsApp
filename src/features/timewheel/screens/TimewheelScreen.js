@@ -65,7 +65,7 @@ export default function TimewheelScreen() {
   // Stable, so the memoised timeline does not re-render for unrelated state.
   // A task opens the task sheet; a routine opens that day's checklist.
   const open = useCallback((item) => (item.kind === 'routine'
-    ? openChecklist(item.routineId, item.date)
+    ? openChecklist(item)
     : openEditor('task', item.task)), [openChecklist, openEditor]);
   // "Flyt": a task's time is edited in the task sheet; a routine's time
   // belongs to the routine itself, edited on Rutiner.

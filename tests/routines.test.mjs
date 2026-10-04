@@ -14,9 +14,8 @@ import { buildToday } from '../src/features/today/logic.js';
 import { buildDay, timelineRows, itemDetails } from '../src/features/timewheel/logic.js';
 import { timeToMinutes } from '../src/core/time/timeOfDay.js';
 import { KEYS } from '../src/core/storage/keys.js';
-import { createStorage } from '../src/core/storage/engine.js';
 import { createPersistedListStore } from '../src/core/state/persistedListStore.js';
-import { createMemoryAdapter, failReadsOf, quietLogger, rawStore, raw } from './fixtures.mjs';
+import { quietLogger, setupListStore } from './fixtures.mjs';
 
 const MON = '2026-10-05';
 const SAT = '2026-10-10';
@@ -67,8 +66,8 @@ test('an occurrence: identity, date, schedule, steps with that day\'s progress',
   const log = [{ routineId: 'morning', date: MON, completedStepIds: ['s2'] }];
   const o = occurrenceFor(routine(), MON, log);
   assert.deepEqual(
-    [o.kind, o.id, o.routineId, o.date, o.title, o.startTime, o.durationMinutes, o.doneCount, o.stepCount, o.done, o.state],
-    ['routine', `morning@${MON}`, 'morning', MON, 'Morgenrutine', '07:30', 45, 1, 4, false, 'inProgress'],
+    [o.kind, o.id, o.routineId, o.date, o.title, o.startTime, o.durationMinutes, o.doneCount, o.steps.length, o.done, describeProgress(o)],
+    ['routine', `morning@${MON}`, 'morning', MON, 'Morgenrutine', '07:30', 45, 1, 4, false, '1 af 4 trin'],
   );
   assert.deepEqual(o.steps.map(s => [s.id, s.done]), [['s1', false], ['s2', true], ['s3', false], ['s4', false]]);
 });
@@ -101,15 +100,15 @@ test('occurrencesOn keeps the routines\' order and never modifies a template', (
 
 test('completion: starts empty, tick and untick a step, all steps = complete', () => {
   const r = routine();
-  assert.equal(occurrenceFor(r, MON, []).state, 'notStarted');
+  assert.equal(describeProgress(occurrenceFor(r, MON, [])), 'Ikke startet');
   let log = toggleStep([], 'morning', MON, 's1');
   assert.deepEqual(log, [{ routineId: 'morning', date: MON, completedStepIds: ['s1'] }]);
-  assert.equal(occurrenceFor(r, MON, log).state, 'inProgress');
+  assert.equal(describeProgress(occurrenceFor(r, MON, log)), '1 af 4 trin');
   log = toggleStep(log, 'morning', MON, 's1');
-  assert.equal(occurrenceFor(r, MON, log).state, 'notStarted');
+  assert.equal(describeProgress(occurrenceFor(r, MON, log)), 'Ikke startet');
   for (const id of ['s1', 's2', 's3', 's4']) log = toggleStep(log, 'morning', MON, id);
   const done = occurrenceFor(r, MON, log);
-  assert.deepEqual([done.state, done.done, describeProgress(done)], ['complete', true, 'Klaret']);
+  assert.deepEqual([done.done, describeProgress(done)], [true, 'Klaret']);
 });
 
 test('completion is per routine and per date', () => {
@@ -130,37 +129,19 @@ test('ticking never changes the template; deleted steps no longer count', () => 
   occurrenceFor(r, MON, log);
   assert.equal(JSON.stringify(r), snapshot);
   const o = occurrenceFor(r, MON, log);
-  assert.deepEqual([o.doneCount, o.stepCount], [1, 4]);
+  assert.deepEqual([o.doneCount, o.steps.length], [1, 4]);
 });
 
 test('completion survives a restart (persisted log, reloaded)', async () => {
-  const adapter = createMemoryAdapter();
-  const storage = createStorage(adapter, { logger: quietLogger() });
-  const first = createPersistedListStore({ storage, key: KEYS.routineLog, seed: [], logger: quietLogger() });
+  // (Failed-read and corrupt-log safety: the routineLog row of the
+  // MODULES matrix in persistedListStore.test.mjs.)
+  const { store: first, storage } = setupListStore({ key: KEYS.routineLog });
   await first.getState().hydrate();
   first.getState().setItems(prev => toggleStep(prev, 'morning', MON, 's1'));
   await first.getState().flush();
   const second = createPersistedListStore({ storage, key: KEYS.routineLog, seed: [], logger: quietLogger() });
   await second.getState().hydrate();
   assert.equal(occurrenceFor(routine(), MON, second.getState().items).doneCount, 1);
-});
-
-test('an unreadable log is never overwritten; a corrupt one is backed up', async () => {
-  const adapter = createMemoryAdapter(rawStore({ routineLog: [{ routineId: 'morning', date: MON, completedStepIds: ['s1'] }] }));
-  failReadsOf(adapter, 'routineLog');
-  const storage = createStorage(adapter, { logger: quietLogger() });
-  const store = createPersistedListStore({ storage, key: KEYS.routineLog, seed: [], logger: quietLogger() });
-  await store.getState().hydrate();
-  assert.equal(store.getState().persistBlocked, true);
-  store.getState().setItems(prev => toggleStep(prev, 'morning', MON, 's2'));
-  await store.getState().flush();
-  assert.match(raw(adapter, 'routineLog'), /"s1"/); // the stored log is untouched
-
-  const corrupt = createMemoryAdapter(rawStore({ routineLog: '[{"routineId":' }));
-  const store2 = createPersistedListStore({ storage: createStorage(corrupt, { logger: quietLogger() }), key: KEYS.routineLog, seed: [], logger: quietLogger() });
-  await store2.getState().hydrate();
-  assert.deepEqual(store2.getState().items, []);
-  assert.equal(raw(corrupt, 'routineLog', { backup: true }), '[{"routineId":');
 });
 
 // ── Editing ────────────────────────────────────────────────────────────────

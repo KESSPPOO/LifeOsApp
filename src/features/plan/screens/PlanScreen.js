@@ -38,12 +38,14 @@ import { useNow } from '../../../core/time/useNow';
 import { useNavigation } from '@react-navigation/native';
 import { LinkRow } from '../../../components/LinkRow';
 import { useJournal, useSetJournal, useTickedThisVisit } from '../../tasks/store';
-import { taskItem, describeItem, scheduleLabel } from '../../tasks/items';
+import { taskItem, describeItem } from '../../tasks/items';
 import { groupPlan, addTask, reorderSection } from '../logic';
 import { useEntryEditor } from '../useEntryEditor';
+import { confirmDelete } from '../../../app/confirmDelete';
 import { Composer } from '../components/Composer';
 import { useRoutines, useRoutineLog } from '../../routines/store';
-import { occurrencesOn, describeProgress } from '../../routines/model';
+import { routineItemsOn } from '../../routines/model';
+import { ItemRow } from '../../tasks/components/ItemRow';
 import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 
 const TASK_ROW_HEIGHT = 64;
@@ -64,7 +66,10 @@ export default function PlanScreen() {
   const navigation = useNavigation();
   const routines = useRoutines();
   const routineLog = useRoutineLog();
-  const routinesToday = useMemo(() => occurrencesOn(routines, routineLog, today), [routines, routineLog, today]);
+  const routinesToday = useMemo(
+    () => routineItemsOn(routines, routineLog, today, today, nowMinutes),
+    [routines, routineLog, today, nowMinutes],
+  );
   const { openChecklist, checklistElement } = useRoutineChecklist();
 
   // ── Actions ─────────────────────────────────────────────────────────────
@@ -74,14 +79,13 @@ export default function PlanScreen() {
   const addFromComposer = (text, date) =>
     setJournal(prev => addTask(prev, { text, subject: '', priority: 'medium', date }));
 
-  const confirmClearAll = () => showAlert({
+  const confirmClearAll = () => showAlert(confirmDelete({
     title: t('plan.clearAllTitle'),
     message: t('plan.clearAllMessage', { count: journal.length }),
-    buttons: [
-      { text: t('taskForm.cancel'), style: 'cancel', onPress: closeAlert },
-      { text: t('plan.clearAllTitle'), style: 'destructive', onPress: () => { setJournal([]); closeAlert(); } },
-    ],
-  });
+    confirmText: t('plan.clearAllTitle'),
+    onConfirm: () => setJournal([]),
+    close: closeAlert,
+  }));
 
   const reorder = (reordered) => setJournal(prev => reorderSection(prev, reordered));
 
@@ -145,22 +149,12 @@ export default function PlanScreen() {
         </Section>
 
         {/* Routines: their own small section, never mixed into the tasks. */}
-        {routinesToday.length > 0 ? (
-          <Section title={t('today.routines')}>
-            {routinesToday.map(occurrence => (
-              <LinkRow
-                key={occurrence.id}
-                label={occurrence.title}
-                meta={[scheduleLabel(occurrence), describeProgress(occurrence)].filter(Boolean).join(' · ')}
-                onPress={() => openChecklist(occurrence.routineId, occurrence.date)}
-                style={styles.linkRow}
-              />
-            ))}
-            <LinkRow label={t('routines.all')} onPress={() => navigation.navigate('routines')} style={styles.linkRow} />
-          </Section>
-        ) : (
-          <LinkRow icon="🔁" label={t('nav.routines')} onPress={() => navigation.navigate('routines')} style={styles.routinesLink} />
-        )}
+        <Section title={t('today.routines')}>
+          {routinesToday.map(item => (
+            <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={openChecklist} />
+          ))}
+          <LinkRow icon="🔁" label={t('routines.all')} onPress={() => navigation.navigate('routines')} style={styles.linkRow} />
+        </Section>
 
         {plan.overdue.length > 0 ? (
           <Section title={t('plan.overdue')}>
@@ -348,7 +342,6 @@ const styles = StyleSheet.create({
   dotToday: { borderWidth: 2, borderColor: COLORS.textMuted },
 
   linkRow:      { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
-  routinesLink: { marginBottom: 24, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   hint:         { fontSize: 13, color: COLORS.textMuted, marginBottom: 8 },
   clearAll:     { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   clearAllText: { fontSize: 15, color: COLORS.red },

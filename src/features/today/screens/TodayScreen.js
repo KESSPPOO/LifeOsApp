@@ -55,7 +55,6 @@ export default function TodayScreen({ userName }) {
   );
 
   const toggle = (item) => tick(item.id);
-  const openRoutine = (item) => openChecklist(item.routineId, item.date);
 
   const greeting = t(greetingKey(now.getHours()));
 
@@ -73,7 +72,7 @@ export default function TodayScreen({ userName }) {
       {/* NU / NÆSTE: selectFocus, the same rule Tidshjul shows. */}
       <FocusLabel text={t('today.now')} accent />
       {day.now ? (
-        <ItemRow item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} onOpen={openRoutine} variant="now" />
+        <ItemRow item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} onOpen={openChecklist} variant="now" />
       ) : (
         <Card style={styles.emptyNow}>
           <Text style={styles.emptyTitle}>{t(EMPTY_TEXT[day.state].title)}</Text>
@@ -90,7 +89,7 @@ export default function TodayScreen({ userName }) {
       {day.next ? (
         <>
           <FocusLabel text={t('today.next')} />
-          <ItemRow item={day.next} meta={describeItem(day.next, today)} onToggle={toggle} onOpen={openRoutine} variant="next" />
+          <ItemRow item={day.next} meta={describeItem(day.next, today)} onToggle={toggle} onOpen={openChecklist} variant="next" />
         </>
       ) : null}
 
@@ -121,7 +120,7 @@ export default function TodayScreen({ userName }) {
       {day.routines.length > 0 ? (
         <Section title={t('today.routines')}>
           {day.routines.map(item => (
-            <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={openRoutine} />
+            <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={openChecklist} />
           ))}
         </Section>
       ) : null}
