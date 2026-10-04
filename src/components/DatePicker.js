@@ -12,6 +12,9 @@
 //         'any'     — no restriction
 //   maxYearsBack: number (default 5) — used by 'future5' and 'past5'
 //   label: string
+//   locale: 'en' (default; the legacy screens) | 'da' — Danish month and
+//           weekday names, Monday-first weeks, Danish buttons and
+//           accessibility labels (src/core/i18n). Used by Plan.
 //
 // ── Fix: hardware back button closed the whole app instead of this modal ─
 // `onRequestClose` on the Modal makes Android route the hardware back
@@ -34,8 +37,10 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../config/colors';
+import { t, formatDateLong, formatMonthYear } from '../core/i18n';
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const WEEKDAYS_DA = ['ma', 'ti', 'on', 'to', 'fr', 'lø', 'sø']; // Monday first
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
 
@@ -51,8 +56,9 @@ function parseDate(str) {
   return { y, m: m - 1, d };
 }
 
-export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, label }) {
+export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, label, locale = 'en' }) {
   const [open, setOpen] = useState(false);
+  const da = locale === 'da';
 
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
@@ -108,7 +114,7 @@ export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, la
   // Build grid for the current month — see note below on why this is
   // chunked into fixed rows of 7 instead of left as a flat array for
   // flexWrap to lay out.
-  const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+  const firstDow = (new Date(viewYear, viewMonth, 1).getDay() + (da ? 6 : 0)) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
@@ -136,19 +142,29 @@ export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, la
     rows.push(cells.slice(i, i + 7));
   }
 
-  const displayValue = value
-    ? new Date(value + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    : '';
+  const displayValue = !value ? ''
+    : da ? formatDateLong(value)
+      : new Date(value + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
     <>
-      <TouchableOpacity style={styles.trigger} onPress={() => setOpen(true)}>
+      <TouchableOpacity
+        style={styles.trigger}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={displayValue ? `${label ? `${label}: ` : ''}${displayValue}` : label}
+      >
         <Text style={styles.calIcon}>📅</Text>
         <Text style={[styles.triggerText, !value && styles.placeholder]}>
           {displayValue || (label || 'Select date')}
         </Text>
         {value ? (
-          <TouchableOpacity onPress={() => onChange('')} hitSlop={{ top:8,bottom:8,left:8,right:8 }}>
+          <TouchableOpacity
+            onPress={() => onChange('')}
+            hitSlop={{ top:8,bottom:8,left:8,right:8 }}
+            accessibilityRole="button"
+            accessibilityLabel={da ? t('datePicker.clear') : 'Clear date'}
+          >
             <Text style={styles.clearBtn}>✕</Text>
           </TouchableOpacity>
         ) : null}
@@ -164,18 +180,18 @@ export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, la
           )}
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
+            <TouchableOpacity onPress={prevMonth} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={da ? t('datePicker.prev') : 'Previous month'}>
               <Text style={styles.navArrow}>‹</Text>
             </TouchableOpacity>
-            <Text style={styles.monthLabel}>{MONTHS[viewMonth]} {viewYear}</Text>
-            <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
+            <Text style={styles.monthLabel}>{da ? formatMonthYear(viewYear, viewMonth) : `${MONTHS[viewMonth]} ${viewYear}`}</Text>
+            <TouchableOpacity onPress={nextMonth} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={da ? t('datePicker.next') : 'Next month'}>
               <Text style={styles.navArrow}>›</Text>
             </TouchableOpacity>
           </View>
 
           {/* Weekday labels */}
           <View style={styles.weekRow}>
-            {WEEKDAYS.map(d => (
+            {(da ? WEEKDAYS_DA : WEEKDAYS).map(d => (
               <Text key={d} style={styles.weekLabel}>{d}</Text>
             ))}
           </View>
@@ -201,6 +217,9 @@ export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, la
                       ]}
                       onPress={() => selectDate(dateStr)}
                       disabled={disabled}
+                      accessibilityRole="button"
+                      accessibilityLabel={da ? formatDateLong(dateStr) : dateStr}
+                      accessibilityState={{ selected, disabled }}
                     >
                       <Text style={[
                         styles.cellText,
@@ -223,13 +242,14 @@ export function DatePicker({ value, onChange, mode = 'any', maxYearsBack = 5, la
               onPress={handleToday}
               style={[styles.todayBtn, isDisabled(todayStr) && styles.todayBtnDisabled]}
               disabled={isDisabled(todayStr)}
+              accessibilityRole="button"
             >
               <Text style={[styles.todayBtnText, isDisabled(todayStr) && styles.todayBtnTextDisabled]}>
-                Today
+                {da ? t('datePicker.today') : 'Today'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}>
-              <Text style={styles.closeBtnText}>Close</Text>
+            <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn} accessibilityRole="button">
+              <Text style={styles.closeBtnText}>{da ? t('datePicker.close') : 'Close'}</Text>
             </TouchableOpacity>
           </View>
         </View>

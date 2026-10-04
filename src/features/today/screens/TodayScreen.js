@@ -5,11 +5,12 @@
 // from the stored tasks, habits, goals and groceries (buildToday in
 // ../logic.js decides what goes where); nothing is invented.
 //
-// The screen mounts on every visit (AppNavigator). It also re-reads the
-// clock when the app returns to the foreground and on every tap, so a
-// screen left open overnight never shows, or writes to, yesterday.
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, AppState } from 'react-native';
+// The clock (useNow) refreshes every minute and when the app returns to the
+// foreground, and is re-read on every tap, so a timed task becomes NU when
+// its time comes and a screen left open overnight never shows, or writes
+// to, yesterday.
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { Card } from '../../../components/Card';
@@ -17,14 +18,18 @@ import { LinkRow } from '../../../components/LinkRow';
 import { toggleJournalEntry } from '../../../data/tasks';
 import { t, formatDateLong } from '../../../core/i18n';
 import { localDateKey, isoWeekNumber } from '../../../core/time/dates';
+import { minutesOfDay } from '../../../core/time/timeOfDay';
+import { useNow } from '../../../core/time/useNow';
 import { useJournal, useSetJournal } from '../../tasks/store';
 import { useGoals } from '../../goals/store';
 import { useGroceries } from '../../groceries/store';
-import { buildToday, describeItem, describeGoal, greetingKey } from '../logic';
-import { CheckButton } from '../components/CheckButton';
+import { CheckButton } from '../../../components/CheckButton';
+import { describeItem } from '../../tasks/items';
+import { buildToday, describeGoal, greetingKey } from '../logic';
 
 const EMPTY_TEXT = {
   empty:   { title: 'today.empty.title',   body: 'today.empty.body' },
+  free:    { title: 'today.free.title',    body: 'today.free.body' },
   allDone: { title: 'today.allDone.title', body: 'today.allDone.body' },
 };
 
@@ -37,18 +42,15 @@ export default function TodayScreen({ userName }) {
   const goals = useGoals();
   const groceries = useGroceries();
 
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') setNow(new Date()); });
-    return () => sub.remove();
-  }, []);
+  const [now, setNow] = useNow();
   const today = localDateKey(now);
+  const nowMinutes = minutesOfDay(now);
   // Tasks ticked during this visit stay visible (dimmed), so a tap can be
-  // undone (same rule as the Tasks screen).
+  // undone (same rule as Plan).
   const [keepVisibleIds, setKeepVisibleIds] = useState(() => new Set());
   const day = useMemo(
-    () => buildToday({ journal, goals, groceries, today, keepVisibleIds }),
-    [journal, goals, groceries, today, keepVisibleIds],
+    () => buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds }),
+    [journal, goals, groceries, today, nowMinutes, keepVisibleIds],
   );
 
   const toggle = (item) => {
@@ -83,7 +85,7 @@ export default function TodayScreen({ userName }) {
       ) : (
         <Card style={styles.emptyNow}>
           <Text style={styles.emptyTitle}>{t(EMPTY_TEXT[day.state].title)}</Text>
-          <Text style={styles.emptyBody}>{t(EMPTY_TEXT[day.state].body)}</Text>
+          <Text style={styles.emptyBody}>{t(EMPTY_TEXT[day.state].body, { time: day.next?.startTime })}</Text>
           {day.state === 'empty' ? (
             <LinkRow label={t('today.goToPlan')} onPress={() => navigation.navigate('journal')} />
           ) : null}
@@ -178,6 +180,9 @@ function ItemRow({ item, meta, onToggle, variant }) {
   return (
     <View style={variant ? [styles.focus, variant === 'now' && styles.focusNow] : styles.row}>
       <View style={styles.textCol}>
+        {item.timeLabel ? (
+          <Text style={[styles.timeLabel, variant === 'now' && styles.timeLabelNow]}>{item.timeLabel}</Text>
+        ) : null}
         <Text style={[styles.rowTitle, variant && styles.focusTitle, variant === 'now' && styles.focusTitleNow, item.done && styles.doneText]}>
           {displayTitle(item)}
         </Text>
@@ -230,5 +235,9 @@ const styles = StyleSheet.create({
   textCol:  { flex: 1, paddingRight: 8 },
   rowTitle: { fontSize: 16, color: COLORS.text },
   meta:     { fontSize: 13, color: COLORS.textMuted, marginTop: 3 },
+  // The time sits above the title ("10:45 · 1 time"), so timed items read
+  // differently from untimed ones without relying on colour.
+  timeLabel:    { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, marginBottom: 2, fontVariant: ['tabular-nums'] },
+  timeLabelNow: { fontSize: 15, color: COLORS.text },
   doneText: { color: COLORS.textMuted, textDecorationLine: 'line-through' },
 });

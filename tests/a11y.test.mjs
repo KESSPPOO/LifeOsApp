@@ -33,12 +33,15 @@ test('textSub fails 4.5:1, so the new UI does not use it for text', () => {
 });
 
 // The new UI: the app shell, the shared components it added, and every
-// file under src/features/today (new files there are picked up).
+// screen/component under src/features/today and src/features/plan (new
+// files there are picked up).
 const NEW_UI = [
   ...sourceFiles(repoPath('../src/app/navigation')),
   ...sourceFiles(repoPath('../src/features/today')).filter(f => !f.endsWith('logic.js')),
+  ...sourceFiles(repoPath('../src/features/plan')).filter(f => !f.endsWith('logic.js')),
   repoPath('../src/components/HeaderBar.js'),
   repoPath('../src/components/LinkRow.js'),
+  repoPath('../src/components/CheckButton.js'),
 ];
 
 test('new UI files: no text below 12 pt, no textSub', () => {
@@ -53,7 +56,7 @@ test('interactive elements in the new UI declare a role', () => {
   for (const rel of NEW_UI) {
     const src = readFileSync(rel, 'utf8');
     const touchables = (src.match(/<TouchableOpacity\b/g) || []).length;
-    const roles = (src.match(/accessibilityRole="(button|checkbox|tab)"/g) || []).length;
+    const roles = (src.match(/accessibilityRole="(button|checkbox|tab|radio)"/g) || []).length;
     assert.ok(roles >= touchables, `${rel}: ${touchables} touchables, ${roles} roles`);
   }
 });

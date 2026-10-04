@@ -1,26 +1,38 @@
 // src/features/today/logic.js
 //
 // What the I dag screen shows, derived from the stored lists. Pure: the
-// date is passed in, nothing is read from the clock and nothing is written.
-// Real data only. Without time of day or calendar events there is no
-// clock-based "now", so NU is the most important thing to do today.
+// date and time ("now") are passed in, nothing is read from the clock and
+// nothing is written. Real data only.
+//
+// The unfinished tasks dated today or earlier ("due") are split by their
+// schedule at `now` (src/features/tasks/schedule.js):
+//   active    a timed task with a duration whose interval contains now
+//   upcoming  a timed task later today
+//   flexible  everything else: untimed tasks, carried-over tasks, and timed
+//             tasks whose time has passed (still open, never hidden)
+// Flexible tasks are ranked by priority (high, medium, low; missing counts
+// as medium), then date (oldest first), then the user's own list order.
 //
 // NU / NÆSTE (deterministic):
-//   1. Candidates are the unfinished one-off tasks dated today or earlier,
-//      ranked by priority (high, medium, low; missing counts as medium),
-//      then by date (oldest first), then the user's own list order;
-//      followed by today's unticked habits in list order.
-//   2. NU = the first candidate. NÆSTE = the second; if there is none, the
-//      earliest unfinished task planned for a later day.
-//   3. Nothing is shown twice: items in NU/NÆSTE are left out of the
+//   1. The queue is: active tasks (earliest start first), then the ranked
+//      flexible tasks, then today's unticked habits in list order.
+//   2. NU = the first in the queue. Upcoming timed tasks are never NU: their
+//      time has not come.
+//   3. NÆSTE = the earliest upcoming timed task today; otherwise the next in
+//      the queue; otherwise the earliest unfinished task on a later day.
+//   4. Nothing is shown twice: items in NU/NÆSTE are left out of the
 //      overview below them. The overview lists up to REST_LIMIT more open
-//      tasks, then every finished one (dimmed, so a tap can be undone).
+//      tasks (active, then upcoming in time order, then flexible), then
+//      every finished one (dimmed, so a tap can be undone).
 //
 // Timewheel boundary: NU/NÆSTE take items of one shape ({ kind, id,
-// title, … }). The Timewheel and Calendar will add timed kinds ('event',
-// 'routine') as candidates ahead of untimed tasks; the screen does not change
-// for that. No such items exist yet, and none are invented here.
+// title, startTime, durationMinutes, status, … }). The Timewheel and
+// Calendar can add timed kinds ('event', 'routine') to the same queues; the
+// screen does not change for that. No such items exist yet, and none are
+// invented here.
 import { groupJournal } from '../../data/tasks.js';
+import { scheduleStatus, compareStart } from '../tasks/schedule.js';
+import { taskItem, habitItem } from '../tasks/items.js';
 import { addDays, isDateKey } from '../../core/time/dates.js';
 import { t, formatRelativeDay } from '../../core/i18n/index.js';
 
@@ -37,23 +49,6 @@ const priorityRank = (p) => PRIORITY_RANK[p] ?? PRIORITY_RANK.medium;
 export function rankDueTasks(tasks) {
   return [...tasks].sort((a, b) =>
     priorityRank(a.priority) - priorityRank(b.priority) || a.date.localeCompare(b.date));
-}
-
-function taskItem(task, today) {
-  return {
-    kind: 'task',
-    id: task.id,
-    title: task.text,
-    done: Boolean(task.done),
-    date: task.date,
-    important: task.priority === 'high',
-    carriedOver: task.date < today,
-    planned: task.date > today,
-  };
-}
-
-function habitItem(habit, today) {
-  return { kind: 'habit', id: habit.id, title: habit.text, icon: habit.icon, done: Boolean(habit.history?.[today]) };
 }
 
 /**
@@ -80,36 +75,44 @@ export function goalsNeedingAttention(goals, today) {
 /**
  * journal: tasks + habits (src/data/tasks.js). keepVisibleIds: tasks ticked
  * during this visit, so a finished overdue task stays (dimmed) and the
- * tap can be undone, same as on the Tasks screen.
+ * tap can be undone, same as on Plan.
+ *
+ * nowMinutes: minutes since today's midnight.
  *
  * Returns { now, next, rest, restMore, habits, goals, shoppingCount,
- * done, total, state } where state is 'active' (there is a NU),
- * 'allDone' (everything for today is ticked) or 'empty' (nothing today).
+ * done, total, state } where state is 'active' (there is a NU), 'free'
+ * (nothing to do now, but a timed task later today), 'allDone' (everything
+ * for today is ticked) or 'empty' (nothing today).
  * done/total is the progress of today's own plan: tasks dated today plus
  * habits. Carried-over tasks are not counted (when they were finished is
  * not stored), so the numbers do not change between visits.
  */
-export function buildToday({ journal, goals, groceries, today, keepVisibleIds }) {
+export function buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds }) {
   const groups = groupJournal(journal, today, keepVisibleIds);
   // (Parameters are named `task`, not `t`, which is the i18n lookup here.)
+  const item = (task) => taskItem(task, today, nowMinutes);
+  const statusOf = (task) => scheduleStatus(task, today, nowMinutes);
   const due = [...groups.Overdue, ...groups.Today];
-  const dueOpen = rankDueTasks(due.filter(task => !task.done));
+  const dueOpen = due.filter(task => !task.done);
   const dueDone = due.filter(task => task.done);
+  const byDateThenStart = (a, b) => a.date.localeCompare(b.date) || compareStart(a, b);
+  const active = dueOpen.filter(task => statusOf(task) === 'active').sort(byDateThenStart);
+  const upcomingTimed = dueOpen.filter(task => statusOf(task) === 'upcoming').sort(compareStart);
+  const flexible = rankDueTasks(dueOpen.filter(task => !active.includes(task) && !upcomingTimed.includes(task)));
   const habits = groups.Habits.map(h => habitItem(h, today));
   const habitsDone = habits.filter(h => h.done).length;
-  const upcomingOpen = groups.Upcoming.filter(task => !task.done);
+  const laterDay = groups.Upcoming.filter(task => !task.done).sort(byDateThenStart)[0];
 
-  const candidates = [...dueOpen.map(task => taskItem(task, today)), ...habits.filter(h => !h.done)];
-  const now = candidates[0] ?? null;
-  const next = candidates[1] ?? (upcomingOpen[0] ? taskItem(upcomingOpen[0], today) : null);
-  const featured = new Set([now, next].filter(Boolean).map(item => item.id));
+  const queue = [...active.map(item), ...flexible.map(item), ...habits.filter(h => !h.done)];
+  const now = queue[0] ?? null;
+  const next = (upcomingTimed[0] && item(upcomingTimed[0])) ?? queue[1] ?? (laterDay ? item(laterDay) : null);
+  const featured = new Set([now, next].filter(Boolean).map(i => i.id));
   const notFeatured = (task) => !featured.has(task.id);
 
   // Open tasks are capped; finished ones always stay listed, so a task
   // ticked in NU/NÆSTE is never pushed out of sight before it can be undone.
-  const restOpen = dueOpen.filter(notFeatured);
-  const rest = [...restOpen.slice(0, REST_LIMIT), ...dueDone.filter(notFeatured)]
-    .map(task => taskItem(task, today));
+  const restOpen = [...active, ...upcomingTimed, ...flexible].filter(notFeatured);
+  const rest = [...restOpen.slice(0, REST_LIMIT), ...dueDone.filter(notFeatured)].map(item);
 
   return {
     now,
@@ -121,18 +124,10 @@ export function buildToday({ journal, goals, groceries, today, keepVisibleIds })
     shoppingCount: groceries.filter(g => !g.done).length,
     done: groups.Today.filter(task => task.done).length + habitsDone,
     total: groups.Today.length + habits.length,
-    state: now ? 'active' : dueDone.length + habitsDone > 0 ? 'allDone' : 'empty',
+    state: now ? 'active'
+      : upcomingTimed.length > 0 ? 'free'
+        : dueDone.length + habitsDone > 0 ? 'allDone' : 'empty',
   };
-}
-
-/** The quiet line under an item's title, e.g. 'Fra i går · Vigtig'. */
-export function describeItem(item, today) {
-  const parts = [];
-  if (item.kind === 'habit') parts.push(t('today.meta.habit'));
-  if (item.carriedOver) parts.push(t('today.meta.carriedOver', { day: formatRelativeDay(item.date, today) }));
-  if (item.planned) parts.push(t('today.meta.planned', { day: formatRelativeDay(item.date, today) }));
-  if (item.important) parts.push(t('today.meta.important'));
-  return parts.join(' · ');
 }
 
 /** 'Frist i morgen · 2 af 5' for a goalsNeedingAttention() entry. */

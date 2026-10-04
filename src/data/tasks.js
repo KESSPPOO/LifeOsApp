@@ -8,7 +8,7 @@
 // import below: Node's ESM resolver needs it, Metro accepts it too).
 import { localDateKey } from './helpers.js';
 
-// Display order of the sections on the Tasks screen.
+// The groups groupJournal returns (Plan and I dag build on them).
 export const TASK_SECTIONS = ['Overdue', 'Today', 'Upcoming', 'Habits', 'No Date'];
 
 // Consecutive days with a `history` entry, counting back from `today`
@@ -46,7 +46,7 @@ export function toggleJournalEntry(journal, id, today) {
   });
 }
 
-// Groups the journal into TASK_SECTIONS for the Tasks screen.
+// Groups the journal into TASK_SECTIONS (used by Plan and I dag).
 //
 // 'Overdue' = not-done one-off tasks dated before today. Previously no
 // section matched them at all, so an unfinished task silently disappeared

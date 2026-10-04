@@ -22,7 +22,7 @@ export const KEY_SPECS = Object.freeze({
   schemaVersion:      { type: 'number',  owner: 'core/storage', description: 'Highest migration version applied (missing = 0, i.e. pre-versioning data).' },
 
   // ── Tasks + habits (migrated to features/tasks) ───────────────────────
-  journal:            { type: 'array',   owner: 'features/tasks', description: 'Tasks AND habits in one list (UI calls it "Tasks"). Habit = recurring:true with history {YYYY-MM-DD: 1} and cached streak.' },
+  journal:            { type: 'array',   owner: 'features/tasks', description: 'Tasks AND habits in one list (UI: "Plan"). Habit = recurring:true with history {YYYY-MM-DD: 1} and cached streak. A dated task may have optional startTime "HH:mm" and durationMinutes (1-1440); absent = untimed / unknown (ADR-006).' },
   habits:             { type: 'array',   owner: 'legacy', description: 'Pre-v1.4 separate habits list. Read once by migration 1; never deleted, never written.' },
   habitsMigrated:     { type: 'boolean', owner: 'legacy', description: 'Set by migration 1 (and by builds before versioned storage) once habits were merged into journal.' },
 

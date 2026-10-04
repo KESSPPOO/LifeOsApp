@@ -3,9 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildToday, rankDueTasks, goalsNeedingAttention, describeItem, describeGoal, greetingKey,
+  buildToday, rankDueTasks, goalsNeedingAttention, describeGoal, greetingKey,
   REST_LIMIT, GOAL_ATTENTION_DAYS,
 } from '../src/features/today/logic.js';
+import { describeItem } from '../src/features/tasks/items.js';
 import { toggleJournalEntry } from '../src/data/tasks.js';
 
 const TODAY = '2026-10-03'; // Saturday
@@ -14,8 +15,9 @@ const task = (id, date, priority = 'medium', done = false, text = `Opgave ${id}`
 const habit = (id, history = {}, text = `Vane ${id}`) =>
   ({ id, text, icon: '💧', recurring: true, date: null, priority: 'medium', done: false, history, streak: 0 });
 
+const NOON = 12 * 60;
 const day = (journal, extra = {}) =>
-  buildToday({ journal, goals: [], groceries: [], today: TODAY, ...extra });
+  buildToday({ journal, goals: [], groceries: [], today: TODAY, nowMinutes: NOON, ...extra });
 const ids = (items) => items.map(i => i.id);
 
 // ── NU / NÆSTE ─────────────────────────────────────────────────────────────
@@ -111,6 +113,100 @@ test('ticking NU moves NÆSTE up (the selection follows the data)', () => {
   assert.deepEqual(d.rest.map(i => [i.id, i.done]), [[1, true]]);
 });
 
+// ── Scheduled tasks ────────────────────────────────────────────────────────
+
+const at = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+const timed = (id, startTime, durationMinutes, extra = {}) =>
+  ({ ...task(id, TODAY, extra.priority ?? 'medium', extra.done ?? false), startTime, ...(durationMinutes ? { durationMinutes } : {}) });
+
+test('an active scheduled task becomes NU, ahead of more important flexible tasks', () => {
+  const d = day([task(1, TODAY, 'high'), timed(2, '10:45', 60)], { nowMinutes: at('11:00') });
+  assert.equal(d.now.id, 2);
+  assert.equal(d.now.status, 'active');
+  assert.equal(d.now.endTime, '11:45');
+  assert.equal(describeItem(d.now, TODAY), 'I gang til 11:45');
+  assert.equal(d.now.timeLabel, '10:45 · 1 time');
+  assert.equal(d.next.id, 1);
+});
+
+test('the earliest upcoming timed task today becomes NÆSTE; it is never NU before its time', () => {
+  const journal = [timed(1, '16:00', 30), task(2, TODAY, 'low'), timed(3, '13:15'), timed(4, '12:30', 15, { priority: 'high' })];
+  const d = day(journal, { nowMinutes: at('12:00') });
+  assert.equal(d.now.id, 2); // the flexible task: the timed ones are still ahead
+  assert.equal(d.next.id, 4);
+  assert.deepEqual(ids(d.rest), [3, 1]); // the other upcoming ones, in time order
+});
+
+test('only timed tasks later today: no NU ("free"), NÆSTE is the next one', () => {
+  const d = day([timed(1, '15:00', 60), timed(2, '10:45', 60)], { nowMinutes: at('08:00') });
+  assert.equal(d.now, null);
+  assert.equal(d.state, 'free');
+  assert.equal(d.next.id, 2);
+  assert.equal(d.next.startTime, '10:45');
+});
+
+test('a timed task whose time has passed stays visible and actionable', () => {
+  const journal = [timed(1, '09:00', 30), timed(2, '20:00', 30)];
+  const d = day(journal, { nowMinutes: at('12:00') });
+  assert.equal(d.now.id, 1);
+  assert.equal(d.now.status, 'past');
+  assert.equal(d.now.done, false);
+  assert.equal(describeItem(d.now, TODAY), 'Tidspunktet er passeret');
+  assert.equal(d.next.id, 2);
+});
+
+test('a start time without duration is never active: before it NÆSTE, after it a flexible task', () => {
+  const call = timed(1, '14:00');
+  assert.equal(day([call], { nowMinutes: at('13:59') }).next.id, 1);
+  assert.equal(day([call], { nowMinutes: at('13:59') }).now, null);
+  const after = day([call, task(2, TODAY, 'low')], { nowMinutes: at('14:00') });
+  assert.equal(after.now.id, 1);
+  assert.equal(after.now.status, 'past');
+});
+
+test('two active tasks: the one that started first is NU', () => {
+  const d = day([timed(1, '10:30', 60), timed(2, '10:00', 120)], { nowMinutes: at('11:00') });
+  assert.equal(d.now.id, 2);
+  assert.equal(d.next.id, 1);
+});
+
+test('a finished timed task is never NU or NÆSTE', () => {
+  const d = day([timed(1, '10:45', 60, { done: true }), timed(2, '15:00', 60, { done: true }), task(3, TODAY)], { nowMinutes: at('11:00') });
+  assert.equal(d.now.id, 3);
+  assert.equal(d.next, null);
+});
+
+test('untimed fallback is unchanged when nothing is scheduled', () => {
+  const journal = [task(1, TODAY, 'low'), task(2, TODAY, 'high'), task(3, '2026-10-01')];
+  assert.deepEqual([day(journal, { nowMinutes: at('07:00') }).now.id, day(journal, { nowMinutes: at('22:00') }).now.id], [2, 2]);
+  assert.equal(day(journal).next.id, 3);
+});
+
+test('a task from yesterday running past midnight is NU until it ends', () => {
+  const night = { ...task(1, '2026-10-02'), startTime: '23:30', durationMinutes: 60 };
+  const d = day([night, task(2, TODAY)], { nowMinutes: at('00:15') });
+  assert.equal(d.now.id, 1);
+  assert.equal(d.now.status, 'active');
+  // Once it has ended it is an ordinary carried-over task (oldest first).
+  const after = day([night, task(2, TODAY)], { nowMinutes: at('00:45') });
+  assert.deepEqual([after.now.id, after.now.status, after.now.carriedOver], [1, 'past', true]);
+});
+
+test('NÆSTE on a later day shows its time', () => {
+  const later = { ...task(1, '2026-10-05'), startTime: '09:00', durationMinutes: 45 };
+  const d = day([later], { nowMinutes: at('10:00') });
+  assert.equal(d.next.id, 1);
+  assert.equal(d.next.timeLabel, '09:00 · 45 min');
+  assert.equal(describeItem(d.next, TODAY), 'Planlagt til mandag');
+});
+
+test('scheduling logic does not modify its inputs', () => {
+  const journal = [timed(1, '10:45', 60), timed(2, '15:00'), task(3, TODAY)];
+  const snapshot = JSON.stringify(journal);
+  day(journal, { nowMinutes: at('11:00') });
+  assert.equal(JSON.stringify(journal), snapshot);
+});
+
 // ── Empty states and progress ──────────────────────────────────────────────
 
 test('an empty install: nothing to show, calm empty state', () => {
@@ -191,7 +287,7 @@ test('shopping: count of items still to buy, zero when none', () => {
 
 test('I dag never needs University or Finances data', () => {
   // buildToday takes only journal, goals and groceries; extra inputs are ignored.
-  const d = buildToday({ journal: [task(1, TODAY)], goals: [], groceries: [], today: TODAY, exams: undefined });
+  const d = buildToday({ journal: [task(1, TODAY)], goals: [], groceries: [], today: TODAY, nowMinutes: NOON, exams: undefined });
   assert.equal(d.now.id, 1);
 });
 
@@ -199,7 +295,7 @@ test('buildToday does not modify its inputs', () => {
   const journal = [task(1, TODAY, 'low'), task(2, TODAY, 'high'), habit(101)];
   const goals = [goal(1, '2026-10-05'), goal(2, '2026-09-01')];
   const snapshot = JSON.stringify({ journal, goals });
-  buildToday({ journal, goals, groceries: [], today: TODAY });
+  buildToday({ journal, goals, groceries: [], today: TODAY, nowMinutes: NOON });
   assert.equal(JSON.stringify({ journal, goals }), snapshot);
 });
 

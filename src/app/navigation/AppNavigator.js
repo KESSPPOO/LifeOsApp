@@ -22,8 +22,8 @@ import GroceriesScreen  from '../../screens/GroceriesScreen';
 import GoalsScreen      from '../../screens/GoalsScreen';
 import NotesScreen      from '../../screens/NotesScreen';
 import LinksScreen      from '../../screens/LinksScreen';
-import JournalScreen    from '../../screens/JournalScreen';
 import TodayScreen      from '../../features/today/screens/TodayScreen';
+import PlanScreen       from '../../features/plan/screens/PlanScreen';
 import MoreScreen       from './MoreScreen';
 
 const Tab = createBottomTabNavigator();
@@ -62,7 +62,7 @@ export function AppNavigator({ legacyProps }) {
         <Tab.Screen name="more" component={MoreScreen} />
         <Tab.Screen name="home">{() => <HomeScreen {...legacyProps.home} />}</Tab.Screen>
         <Tab.Screen name="uni">{() => <UniScreen {...legacyProps.uni} />}</Tab.Screen>
-        <Tab.Screen name="journal" component={JournalScreen} />
+        <Tab.Screen name="journal" component={PlanScreen} />
         <Tab.Screen name="finances">{() => <FinancesScreen {...legacyProps.finances} />}</Tab.Screen>
         <Tab.Screen name="stats">{() => <StatsScreen {...legacyProps.stats} />}</Tab.Screen>
         <Tab.Screen name="groceries" component={GroceriesScreen} />

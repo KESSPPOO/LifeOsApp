@@ -338,3 +338,49 @@ Product decisions for the existing modules (Session 6):
   cleanup once nobody needs it.
 - The navigation tests pin the new primary order and check that every route
   is either a tab or listed in a Mere section.
+
+---
+
+## ADR-006: Optional local schedule fields on tasks (no migration)
+
+- **Status:** accepted (Session 7, 2026-10-04)
+
+### Context
+Plan, I dag, and later the Timewheel and Calendar need to know when a task
+happens. A task (an entry in `journal` with `recurring: false`) already has
+an optional local `date` ('YYYY-MM-DD'). Existing installs have many tasks
+without any time, and they must keep working unchanged.
+
+### Decision
+- Two **optional** fields on one-off tasks:
+  - `startTime`: local wall-clock time, canonical `'HH:mm'` (24-hour,
+    zero-padded), on the task's `date`.
+  - `durationMinutes`: whole minutes, 1–1440.
+- **Absent (or null, or invalid) means "no time" / "duration unknown".**
+  Nothing is inferred: a task with a start time and no duration is a point
+  in time, never a guessed 30- or 60-minute block.
+- The **end time is derived** (start + duration, possibly past midnight)
+  and never stored.
+- Only **dated** tasks can be timed; habits are never timed. A form save
+  without a time removes both keys (`withSchedule`), so a task saved
+  without a time never gains `startTime: null`.
+- No timestamps, UTC conversion, time-zone ids, recurrence or event
+  model. A local date + local time is enough until a real second consumer
+  (Timewheel, Calendar) shows otherwise.
+- Pure helpers: `src/core/time/timeOfDay.js` (HH:mm parsing and
+  arithmetic) and `src/features/tasks/schedule.js` (a task's schedule,
+  status at a given "now", ordering, labels). Callers pass "now" in.
+
+### Why no migration
+The fields are additive and optional. Every existing task already means
+"no time", which is exactly what an absent field means, so no stored value
+has to change. A migration would rewrite every user's `journal` for no
+gain and add a failure mode. `lifeos_journal` keeps its key and format;
+older app versions ignore the extra keys.
+
+### Consequences
+- A timed task's status at "now" is `upcoming`, `active` (only with a
+  known duration: start ≤ now < end), or `past`. A past, unfinished task
+  stays open and visible; nothing is completed automatically.
+- Overlaps are possible and are not detected or resolved yet; that belongs
+  to the Timewheel.

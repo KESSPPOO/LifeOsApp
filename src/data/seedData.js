@@ -122,7 +122,7 @@ function daysAgo(n) {
   return dateOffset(-n);
 }
 
-// computeStreak (data/tasks.js) is the same function JournalScreen uses
+// computeStreak (data/tasks.js) is the same function Plan uses
 // when a habit is toggled, so a seeded streak is consistent with what a
 // real tap on today's circle would produce — no jump on first interaction.
 function buildHabit({ id, text, icon, hits }) {

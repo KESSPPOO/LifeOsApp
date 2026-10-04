@@ -1,11 +1,12 @@
-// src/features/today/components/CheckButton.js
+// src/components/CheckButton.js
 //
-// The round "done" checkbox used on I dag. A 48 pt touch target around a
-// 28 pt circle; announced as a checkbox with its checked state.
+// The round "done" checkbox used on I dag and Plan. A 48 pt touch target
+// around a 28 pt circle; announced as a checkbox with its checked state and
+// a Danish hint.
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../../config/colors';
-import { t } from '../../../core/i18n';
+import { COLORS } from '../config/colors';
+import { t } from '../core/i18n';
 
 export function CheckButton({ checked, onPress, label }) {
   return (

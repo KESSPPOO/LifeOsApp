@@ -53,16 +53,22 @@ src/
   core/i18n/           da.js (Danish strings) + t() (index.js); format.js: da-DK dates,
                        numbers, DKK (hand-written, not Intl: same output on every device)
   core/time/           dates.js: localDateKey (home of it) + local 'YYYY-MM-DD' arithmetic,
-                       Monday-first weeks, ISO week
+                       Monday-first weeks, ISO week; timeOfDay.js: 'HH:mm' parsing and
+                       arithmetic; useNow.js: the one React hook here (minute tick + resume)
   core/storage/        Versioned persistence: engine.js (adapter-agnostic, never throws),
                        keys.js (documented key registry), migrations.js (SCHEMA_VERSION +
                        ordered migrations), index.js (appStorage = engine over AsyncStorage)
   core/state/          persistedListStore.js: the ONE store factory for persisted lists
                        (hydration, data safety, ordered saves); tested per module
-  features/today/      I dag: logic.js (NU/NÆSTE + overview, pure), screens/TodayScreen.js,
-                       components/CheckButton.js. Reads tasks, goals, groceries stores
-  features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal
-                       (domain logic in src/data/tasks.js)
+  features/today/      I dag: logic.js (NU/NÆSTE + overview, pure), screens/TodayScreen.js.
+                       Reads tasks, goals, groceries stores
+  features/plan/       Plan (route `journal`): logic.js (grouping, list operations, task
+                       form validation, pure), screens/PlanScreen.js, components/TaskSheet.js
+                       + Choice.js
+  features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal;
+                       schedule.js: optional startTime/durationMinutes (ADR-006);
+                       items.js: the task/habit item + Danish description shared by I dag
+                       and Plan (grouping/streaks in src/data/tasks.js)
   features/groceries/  store.js: singleton + useGroceries / useSetGroceries;
                        logic.js: pure list operations (add/toggle/delete/filter)
   features/goals/      store.js + logic.js (progress, completion, expiry, filters)
@@ -76,7 +82,8 @@ src/
     tasks.js           Task/habit grouping and streaks (unit-tested)
     storage.js         saveJSON (legacy write path for App.js-owned sections; delegates to core/storage)
     seedData.js        Demo data that fills an empty install
-  components/          Shared UI (Card, Pill, StatCard, LinkRow, DatePicker, GlassSheet, CustomAlert, DraggableList, …)
+  components/          Shared UI (Card, Pill, StatCard, LinkRow, CheckButton, DatePicker (locale 'da'
+                       for new screens), GlassSheet, CustomAlert, DraggableList, …)
   screens/             One file per screen; holds local UI state and calls the setters passed in
 tests/                 node:test unit tests (data logic, storage, migrations, stores) + fixtures.mjs
 docs/LIFEOS_PLAN.md    Audit, target architecture, roadmap
@@ -208,7 +215,13 @@ Things that are easy to get wrong:
   keys there and refer to them as `KEYS.x`, not string literals.
 - **Never rename an existing storage key or change a stored field's meaning
   without a migration.** The `journal` key must stay, even though the UI
-  calls it Tasks.
+  calls it Plan. New optional fields are fine without a migration when
+  "absent" already means the old behaviour (ADR-006: a task's `startTime` /
+  `durationMinutes`); write them only on a user's save, never on load, and
+  remove them rather than storing `null`.
+- Times of day are local `'HH:mm'` strings (`src/core/time/timeOfDay.js`).
+  No timestamps or UTC for planning; pure logic gets "now" passed in
+  (`today` + minutes since midnight), screens get it from `useNow()`.
 - Migrations live in `src/core/storage/migrations.js`: append
   `{ version, name, up }`; `SCHEMA_VERSION` follows. Each must be idempotent
   (check its own preconditions), non-destructive (never delete legacy keys),

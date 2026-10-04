@@ -23,6 +23,11 @@ export function formatDayMonth(key, today) {
   return today && key.slice(0, 4) !== today.slice(0, 4) ? `${base} ${d.getFullYear()}` : base;
 }
 
+/** (2026, 9) -> 'oktober 2026' (monthIndex 0 = januar). */
+export function formatMonthYear(year, monthIndex) {
+  return `${MONTHS[monthIndex]} ${year}`;
+}
+
 /** '2026-10-03' -> 'Lørdag den 3. oktober' (a heading). */
 export function formatDateLong(key) {
   const text = `${WEEKDAYS[weekdayIndex(key)]} den ${formatDayMonth(key)}`;
@@ -73,3 +78,17 @@ export function formatMoney(value) {
   const text = formatNumber(value, 2, 2);
   return text === '–' ? text : `${text}\u00a0kr.`;
 }
+
+/**
+ * A duration in minutes, the way it is said: 15 -> '15 min', 60 -> '1 time',
+ * 90 -> '1,5 time', 120 -> '2 timer', 75 -> '1 t 15 min'.
+ */
+export function formatDuration(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes % 30 === 0) {
+    const hours = minutes / 60;
+    return `${formatNumber(hours, 1)} ${hours < 2 ? 'time' : 'timer'}`;
+  }
+  return `${Math.floor(minutes / 60)} t ${minutes % 60} min`;
+}
+
