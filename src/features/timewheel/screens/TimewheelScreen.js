@@ -24,7 +24,7 @@ import { useJournal, useTickedThisVisit } from '../../tasks/store';
 import { describeItem } from '../../tasks/items';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { useEntryEditor } from '../../plan/useEntryEditor';
-import { buildDay, timelineRows } from '../logic';
+import { buildDay, timelineRows, clockFor } from '../logic';
 import { DayRing } from '../components/DayRing';
 import { Timeline } from '../components/Timeline';
 import { ConflictPanel } from '../components/ConflictPanel';
@@ -49,9 +49,10 @@ export default function TimewheelScreen() {
 
   // Tasks ticked here stay visible in NU/NÆSTE's source list (as on I dag).
   const [keepVisibleIds, tick] = useTickedThisVisit(sync);
+  const clock = clockFor(date, today, nowMinutes);
   const day = useMemo(
-    () => buildDay({ journal, date, today, nowMinutes, keepVisibleIds }),
-    [journal, date, today, nowMinutes, keepVisibleIds],
+    () => buildDay({ journal, date, today, nowMinutes: clock, keepVisibleIds }),
+    [journal, date, today, clock, keepVisibleIds],
   );
   const rows = useMemo(() => timelineRows(day), [day]);
 
@@ -108,6 +109,9 @@ export default function TimewheelScreen() {
             ) : null}
           </>
         ) : null}
+        {day.tickedHere.map(item => (
+          <ItemRow key={`ticked-${item.id}`} item={item} meta={describeItem(item, today)} onToggle={toggle} />
+        ))}
         {day.relation === 'future' && day.focus.first ? (
           <>
             <FocusLabel text={t('timewheel.first')} accent />
@@ -155,7 +159,9 @@ export default function TimewheelScreen() {
               {t(day.relation === 'today' ? 'timewheel.flexibleToday' : 'timewheel.flexibleDay')}
             </Text>
             {day.flexible.slice(0, FLEXIBLE_SHOWN).map(task => (
-              <Text key={task.id} style={styles.flexibleItem} numberOfLines={1}>· {task.text}</Text>
+              <Text key={task.id} style={styles.flexibleItem} numberOfLines={1}>
+                · {task.text}{task.date < date ? ` (${t('task.meta.carriedOver', { day: formatRelativeDay(task.date, today) })})` : ''}
+              </Text>
             ))}
             <LinkRow
               label={t('timewheel.seeInPlan')}

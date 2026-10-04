@@ -425,4 +425,6 @@ Plan), not under Mere.
 - Four tabs at 12 pt labels still fit a 360 dp phone; a fifth (Træning)
   will need a check.
 - The ring is supplemental: every item, with time, length, state and
-  overlap in words, is in the timeline below it.
+  overlap in words, is in the timeline below it. Open tasks that have no
+  place on the timeline (untimed, or carried over from earlier days) are
+  listed under it, so whatever NU shows is also on the screen.

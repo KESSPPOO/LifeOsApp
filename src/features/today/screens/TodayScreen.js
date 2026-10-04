@@ -64,8 +64,7 @@ export default function TodayScreen({ userName }) {
         </Text>
       </View>
 
-      {/* NU / NÆSTE. The future Timewheel (day ring + timeline) takes this
-          slot; it will feed timed items into the same NU/NÆSTE logic. */}
+      {/* NU / NÆSTE: selectFocus, the same rule Tidshjul shows. */}
       <FocusLabel text={t('today.now')} accent />
       {day.now ? (
         <ItemRow item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} variant="now" />

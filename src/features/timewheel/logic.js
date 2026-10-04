@@ -12,14 +12,12 @@
 // in time: it has no end and never becomes an interval. Untimed tasks are
 // never items; they are listed separately as "flexible".
 import { isTimed, scheduleOn, findOverlaps } from '../tasks/schedule.js';
-import { taskItem } from '../tasks/items.js';
+import { taskItem, habitItem } from '../tasks/items.js';
 import { selectFocus } from '../tasks/focus.js';
-import { addDays } from '../../core/time/dates.js';
+import { addDays, daysBetween } from '../../core/time/dates.js';
 import { MINUTES_PER_DAY, minutesToTime } from '../../core/time/timeOfDay.js';
 import { t, formatDuration } from '../../core/i18n/index.js';
 
-/** Parallel rings on the overview before overlapping items share the last one. */
-export const MAX_LANES = 3;
 /** Free time shown as its own row in the timeline from this length on. */
 const MIN_GAP_MINUTES = 30;
 
@@ -43,7 +41,8 @@ function dayItems(journal, date, today, nowMinutes) {
 }
 
 /**
- * Adds `lane` (overview ring, 0 = outermost) and `overlapsWith` (ids) to
+ * Adds `lane` (overview ring, 0 = outermost; one per overlapping item, so
+ * none is hidden behind another) and `overlapsWith` (ids) to
  * each item, and returns the conflict groups. Only open items with a known
  * duration take part in overlaps: a point in time occupies no interval and
  * a finished task no longer needs the time.
@@ -59,7 +58,7 @@ function placeItems(items) {
       else laneEnds[lane] = item.end;
       if (!item.done) intervals.push({ id: item.id, start: item.start, end: item.end });
     }
-    return { ...item, lane: Math.min(lane, MAX_LANES - 1), overlapsWith: [] };
+    return { ...item, lane, overlapsWith: [] };
   });
   const byId = new Map(placed.map(item => [item.id, item]));
   const { pairs, groups } = findOverlaps(intervals);
@@ -75,7 +74,11 @@ function placeItems(items) {
  *   relation   'today' | 'past' | 'future'
  *   items      timed items (dayItems + lane + overlapsWith)
  *   conflicts  groups of overlapping open items
- *   flexible   open untimed tasks dated `date`
+ *   flexible   open tasks without a place on the timeline: untimed tasks
+ *              dated `date` and, on today, every open task carried over
+ *              from earlier days (it can be NU, so it must be visible)
+ *   tickedHere items ticked during this visit (keepVisibleIds) that are
+ *              done now, so a tick on NU / NÆSTE can be undone here
  *   focus      today: { now, next } from selectFocus (the I dag rule);
  *              a future day: { first } (the first open timed task);
  *              a past day: null (no live "now" on another date)
@@ -86,8 +89,15 @@ function placeItems(items) {
  */
 export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds }) {
   const { items, conflicts } = placeItems(dayItems(journal, date, today, nowMinutes));
-  const flexible = journal.filter(task => !task.recurring && task.date === date && !task.done && !isTimed(task));
   const relation = date === today ? 'today' : date < today ? 'past' : 'future';
+  const onTimeline = new Set(items.map(item => item.id));
+  const flexible = journal.filter(task =>
+    !task.recurring && !task.done && !onTimeline.has(task.id)
+    && ((task.date === date && !isTimed(task)) || (relation === 'today' && task.date && task.date < today)));
+  const tickedHere = journal
+    .filter(entry => keepVisibleIds?.has(entry.id))
+    .map(entry => (entry.recurring ? habitItem(entry, today) : taskItem(entry, today, nowMinutes)))
+    .filter(entry => entry.done);
 
   let focus = null;
   if (relation === 'today') {
@@ -104,12 +114,23 @@ export function buildDay({ journal, date, today, nowMinutes, keepVisibleIds }) {
     items,
     conflicts,
     flexible,
+    tickedHere,
     focus,
     nowMinute: relation === 'today' ? nowMinutes : null,
     done,
     state: items.length === 0 ? (flexible.length > 0 ? 'onlyFlexible' : 'empty')
       : done === items.length ? 'allDone' : 'scheduled',
   };
+}
+
+/**
+ * The minute buildDay needs for `date`: statuses depend on the clock only
+ * for today and the days next to it (a task crossing midnight). For other
+ * days a fixed value keeps the day model stable, so the screen does not
+ * rebuild it every minute.
+ */
+export function clockFor(date, today, nowMinutes) {
+  return Math.abs(daysBetween(today, date)) <= 1 ? nowMinutes : 0;
 }
 
 // ── The 24-hour overview ─────────────────────────────────────────────────

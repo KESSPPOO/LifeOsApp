@@ -26,6 +26,10 @@ test('text colours used by the new UI reach 4.5:1 on its backgrounds', () => {
   assert.ok(contrast(COLORS.bg, COLORS.green) >= 4.5, 'check mark');
   // The empty checkbox ring is a UI component: 3:1.
   assert.ok(contrast(COLORS.textMuted, COLORS.bgElevated) >= 3, 'checkbox ring');
+  // Tidshjul's ring: the elapsed-day line and the arcs/hand on the dark track.
+  for (const fg of ['textMuted', 'accent', 'amber', 'text']) {
+    assert.ok(contrast(COLORS[fg], COLORS.bg) >= 3, `${fg} on the ring background`);
+  }
 });
 
 test('textSub fails 4.5:1, so the new UI does not use it for text', () => {

@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildDay, timelineRows, ringPoint, arcPath, blockHeight, timeRange, itemDetails,
-  describeTimelineItem, MAX_LANES,
+  describeTimelineItem, clockFor,
 } from '../src/features/timewheel/logic.js';
 import { taskItem } from '../src/features/tasks/items.js';
 import { findOverlaps } from '../src/features/tasks/schedule.js';
@@ -152,11 +152,41 @@ test('current time: today has nowMinute, other days do not', () => {
   assert.equal(buildDay({ journal: [], date: '2026-10-04', today: TODAY, nowMinutes: 754 }).nowMinute, null);
 });
 
-test('overlapping items move to inner lanes, capped at MAX_LANES', () => {
+test('overlapping items move to inner lanes; none shares a lane with an overlapping one', () => {
   const d = day([
     timed(1, '10:00', 120), timed(2, '10:30', 60), timed(3, '11:00', 60), timed(4, '11:15', 30), timed(5, '13:00', 30),
   ]);
-  assert.deepEqual(d.items.map(i => [i.id, i.lane]), [[1, 0], [2, 1], [3, 2], [4, MAX_LANES - 1], [5, 0]]);
+  // Regression: a fourth overlapping item used to be clamped onto lane 2 and hidden.
+  assert.deepEqual(d.items.map(i => [i.id, i.lane]), [[1, 0], [2, 1], [3, 2], [4, 3], [5, 0]]);
+});
+
+// ── Regressions from /code-review ──────────────────────────────────────────
+
+test('regression: a carried-over task that is NU is visible on Tidshjul (flexible list)', () => {
+  const overdue = timed(1, '14:00', 30, { date: '2026-10-02' });
+  const d = day([overdue], { nowMinutes: at('09:00') });
+  assert.equal(d.focus.now.id, 1);
+  assert.deepEqual(ids(d.flexible), [1]);
+  assert.equal(d.state, 'onlyFlexible');
+  // Only on today: another day does not list older tasks.
+  assert.deepEqual(buildDay({ journal: [overdue], date: '2026-10-05', today: TODAY, nowMinutes: 0 }).flexible, []);
+});
+
+test('regression: a tick on NU can be undone on Tidshjul (ticked items stay listed)', () => {
+  const journal = [{ ...task(1), done: true }, habit(101, { [TODAY]: 1 }), task(2)];
+  const d = day(journal, { keepVisibleIds: new Set([1, 101, 2]) });
+  assert.deepEqual(d.tickedHere.map(i => [i.id, i.done]), [[1, true], [101, true]]); // 2 is open again
+  assert.deepEqual(day(journal).tickedHere, []);
+});
+
+test('regression: other days do not depend on the minute, so they are not rebuilt every minute', () => {
+  assert.equal(clockFor(TODAY, TODAY, 754), 754);
+  assert.equal(clockFor('2026-10-02', TODAY, 754), 754); // a task may cross midnight into today
+  assert.equal(clockFor('2026-10-04', TODAY, 754), 754);
+  assert.equal(clockFor('2026-10-08', TODAY, 754), 0);
+  const journal = [timed(1, '09:00', 60, { date: '2026-10-08' })];
+  const build = (minute) => buildDay({ journal, date: '2026-10-08', today: TODAY, nowMinutes: clockFor('2026-10-08', TODAY, minute) });
+  assert.deepEqual(build(at('08:00')), build(at('20:00')));
 });
 
 // ── Timeline ───────────────────────────────────────────────────────────────
