@@ -11,6 +11,7 @@
 export const da = {
   // ── Navigation (src/config/nav.js) ────────────────────────────────────
   'nav.today':     'I dag',
+  'nav.timewheel': 'Tidshjul',
   'nav.plan':      'Plan',
   'nav.more':      'Mere',
   'nav.groceries': 'Indkøb',
@@ -139,4 +140,50 @@ export const da = {
   'datePicker.prev':  'Forrige måned',
   'datePicker.next':  'Næste måned',
   'datePicker.clear': 'Fjern dato',
+
+  // ── Tidshjul (Timewheel) ──────────────────────────────────────────────
+  'timewheel.prevDay':     'Forrige dag',
+  'timewheel.nextDay':     'Næste dag',
+  'timewheel.backToToday': 'I dag',
+  'timewheel.backToTodayHint': 'Viser i dag igen',
+  'timewheel.week':        'Uge {week}',
+  'timewheel.first':       'Første planlagte',
+  'timewheel.nothingNow':  'Intet lige nu',
+  'timewheel.pastSummary': '{done} af {total} med tidspunkt blev klaret',
+  'timewheel.overview':    'Døgnet',
+  'timewheel.timeline':    'Tidslinje',
+  'timewheel.nowMarker':   'Nu · {time}',
+  'timewheel.free':        'Fri · {duration}',
+  'timewheel.point':       'Uden varighed',
+  'timewheel.fromYesterday': 'fortsat fra i går',
+  'timewheel.untilTomorrow': 'slutter i morgen',
+  'timewheel.done':        'klaret',
+  'timewheel.active':      'i gang',
+  'timewheel.overlapsWith': 'overlapper med {titles}',
+  'timewheel.openHint':    'Åbner opgaven',
+  'timewheel.allDone':     'Alt med tidspunkt er klaret.',
+
+  'timewheel.empty.title':  'Intet planlagt med tidspunkt',
+  'timewheel.empty.open':   'Din dag er åben.',
+  'timewheel.empty.past':   'Der var intet med tidspunkt den dag.',
+  'timewheel.empty.flexible': 'Dagen har kun opgaver uden tidspunkt.',
+
+  'timewheel.flexibleToday': 'Fleksibelt i dag',
+  'timewheel.flexibleDay':   'Uden tidspunkt den dag',
+  'timewheel.flexibleCount': { one: '1 opgave uden tidspunkt', other: '{count} opgaver uden tidspunkt' },
+  'timewheel.seeInPlan':     'Se i Plan',
+
+  'timewheel.conflicts':     '{count} ting overlapper',
+  'timewheel.conflictsHint': 'Intet flyttes automatisk. Du bestemmer.',
+  'timewheel.showConflicts': 'Vis hvilke',
+  'timewheel.hideConflicts': 'Skjul',
+  'timewheel.open':          'Åbn',
+  'timewheel.move':          'Flyt',
+  'timewheel.openLabel':     'Åbn {title}',
+  'timewheel.moveLabel':     'Flyt {title} til et andet tidspunkt',
+
+  'timewheel.a11y.at':      'klokken {time}',
+  'timewheel.a11y.range':   'fra {start} til {end}',
+  'timewheel.a11y.ring':    { one: 'Døgnoversigt med 1 ting med tidspunkt', other: 'Døgnoversigt med {count} ting med tidspunkt' },
+  'timewheel.a11y.ringNow': 'Klokken er {time}',
 };

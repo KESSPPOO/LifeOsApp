@@ -9,7 +9,8 @@
 // Time is optional: an empty time field means "no time". Duration choices
 // appear only once a valid time is typed, and "Ved ikke" (unknown) is a
 // valid answer. The parent remounts the sheet (key) for each opening, so
-// the form starts from `initial`.
+// the form starts from `initial`. focus="time" starts in the time field
+// (Timewheel's "Flyt"). Opened through useEntryEditor (../useEntryEditor.js).
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView,
@@ -32,7 +33,7 @@ const TITLES = {
   habit: { new: 'taskForm.newHabit', edit: 'taskForm.editHabit' },
 };
 
-export function TaskSheet({ kind, editing, initial, today, onSave, onDelete, onClose }) {
+export function TaskSheet({ kind, editing, initial, focus, today, onSave, onDelete, onClose }) {
   const [form, setForm] = useState(initial);
   const [error, setError] = useState(null);
   const set = (field) => (value) => { setForm(f => ({ ...f, [field]: value })); setError(null); };
@@ -96,7 +97,7 @@ export function TaskSheet({ kind, editing, initial, today, onSave, onDelete, onC
                   placeholderTextColor={COLORS.textMuted}
                   value={form.text}
                   onChangeText={set('text')}
-                  autoFocus={!editing}
+                  autoFocus={!editing && focus !== 'time'}
                   accessibilityLabel={t('taskForm.title')}
                 />
 
@@ -127,6 +128,7 @@ export function TaskSheet({ kind, editing, initial, today, onSave, onDelete, onC
                         onEndEditing={normaliseTime}
                         keyboardType="numbers-and-punctuation"
                         maxLength={5}
+                        autoFocus={focus === 'time'}
                         accessibilityLabel={t('taskForm.time')}
                         accessibilityHint={t('taskForm.timePlaceholder')}
                       />

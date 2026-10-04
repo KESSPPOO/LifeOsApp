@@ -22,7 +22,7 @@ import { useNow } from '../../../core/time/useNow';
 import { useJournal, useToggleEntry } from '../../tasks/store';
 import { useGoals } from '../../goals/store';
 import { useGroceries } from '../../groceries/store';
-import { CheckButton } from '../../../components/CheckButton';
+import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { describeItem } from '../../tasks/items';
 import { buildToday, describeGoal, greetingKey } from '../logic';
 
@@ -31,8 +31,6 @@ const EMPTY_TEXT = {
   free:    { title: 'today.free.title',    body: 'today.free.body' },
   allDone: { title: 'today.allDone.title', body: 'today.allDone.body' },
 };
-
-const displayTitle = (item) => (item.icon ? `${item.icon}  ${item.title}` : item.title);
 
 export default function TodayScreen({ userName }) {
   const navigation = useNavigation();
@@ -149,41 +147,11 @@ export default function TodayScreen({ userName }) {
   );
 }
 
-function FocusLabel({ text, accent }) {
-  return (
-    <View style={styles.focusLabelRow}>
-      {accent ? <View style={styles.focusDot} /> : null}
-      <Text style={styles.focusLabel} accessibilityRole="header">{text}</Text>
-    </View>
-  );
-}
-
 function Section({ title, children }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle} accessibilityRole="header">{title}</Text>
       {children}
-    </View>
-  );
-}
-
-/**
- * A task or habit with its check button. variant: 'now' (the NU card),
- * 'next' (the NÆSTE outline) or a plain overview row.
- */
-function ItemRow({ item, meta, onToggle, variant }) {
-  return (
-    <View style={variant ? [styles.focus, variant === 'now' && styles.focusNow] : styles.row}>
-      <View style={styles.textCol}>
-        {item.timeLabel ? (
-          <Text style={[styles.timeLabel, variant === 'now' && styles.timeLabelNow]}>{item.timeLabel}</Text>
-        ) : null}
-        <Text style={[styles.rowTitle, variant && styles.focusTitle, variant === 'now' && styles.focusTitleNow, item.done && styles.doneText]}>
-          {displayTitle(item)}
-        </Text>
-        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
-      </View>
-      <CheckButton checked={item.done} onPress={() => onToggle(item)} label={item.title} />
     </View>
   );
 }
@@ -196,23 +164,6 @@ const styles = StyleSheet.create({
   date:    { fontSize: 26, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
   subline: { fontSize: 15, color: COLORS.textMuted, marginTop: 6 },
 
-  focusLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  focusDot:      { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent, marginRight: 8 },
-  focusLabel:    { fontSize: 13, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' },
-
-  focus: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: COLORS.border, borderRadius: 18,
-    paddingVertical: 14, paddingLeft: 18, paddingRight: 8,
-    marginBottom: 24,
-  },
-  focusNow: {
-    backgroundColor: COLORS.bgElevated, borderColor: COLORS.border2,
-    paddingVertical: 20, marginBottom: 10,
-  },
-  focusTitle:    { fontSize: 17, fontWeight: '600' },
-  focusTitleNow: { fontSize: 21, lineHeight: 28 },
-
   emptyNow:   { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 8, marginBottom: 10 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
   emptyBody:  { fontSize: 15, lineHeight: 22, color: COLORS.textMuted, marginTop: 6, marginBottom: 6 },
@@ -223,16 +174,4 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textMuted, marginBottom: 4 },
 
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
-  row: {
-    flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
-  },
-  textCol:  { flex: 1, paddingRight: 8 },
-  rowTitle: { fontSize: 16, color: COLORS.text },
-  meta:     { fontSize: 13, color: COLORS.textMuted, marginTop: 3 },
-  // The time sits above the title ("10:45 · 1 time"), so timed items read
-  // differently from untimed ones without relying on colour.
-  timeLabel:    { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, marginBottom: 2, fontVariant: ['tabular-nums'] },
-  timeLabelNow: { fontSize: 15, color: COLORS.text },
-  doneText: { color: COLORS.textMuted, textDecorationLine: 'line-through' },
 });

@@ -28,7 +28,7 @@ prototype.**
 |---|---|
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
-| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Plan · Mere** (ADR-005); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer. The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
+| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Tidshjul · Plan · Mere** (ADR-005, ADR-007); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer. The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
 | State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
@@ -62,14 +62,21 @@ src/
                        (hydration, data safety, ordered saves); tested per module
   features/today/      I dag: logic.js (NU/NÆSTE + overview, pure), screens/TodayScreen.js.
                        Reads tasks, goals, groceries stores
+  features/timewheel/  Tidshjul (route `timewheel`, ADR-007): logic.js (one date's timed
+                       items, lanes, overlaps, timeline rows, ring geometry; pure),
+                       screens/TimewheelScreen.js, components/DayRing.js (SVG), Timeline.js.
+                       A view over the tasks store; persists nothing
   features/plan/       Plan (route `journal`): logic.js (grouping, list operations, task
                        form validation, pure), screens/PlanScreen.js, components/TaskSheet.js,
-                       Composer.js, Choice.js
+                       Composer.js, Choice.js; useEntryEditor.js (THE task/habit editor,
+                       also used by Timewheel)
   features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal /
                        useToggleEntry (ticks on the real current day);
-                       schedule.js: optional startTime/durationMinutes (ADR-006);
-                       items.js: the task/habit item + Danish description shared by I dag
-                       and Plan (grouping/streaks in src/data/tasks.js)
+                       schedule.js: optional startTime/durationMinutes (ADR-006), status,
+                       ordering, findOverlaps; focus.js: selectFocus = THE NU/NÆSTE rule
+                       (I dag + Timewheel); items.js: the task/habit item + Danish
+                       description; components/ItemRow.js: NU/NÆSTE cards and rows
+                       (grouping/streaks in src/data/tasks.js)
   features/groceries/  store.js: singleton + useGroceries / useSetGroceries;
                        logic.js: pure list operations (add/toggle/delete/filter)
   features/goals/      store.js + logic.js (progress, completion, expiry, filters)
@@ -220,6 +227,9 @@ Things that are easy to get wrong:
   "absent" already means the old behaviour (ADR-006: a task's `startTime` /
   `durationMinutes`); write them only on a user's save, never on load, and
   remove them rather than storing `null`.
+- NU/NÆSTE has one implementation (`selectFocus`); a screen that shows
+  them calls it rather than ranking tasks itself. Tasks are edited only
+  through `useEntryEditor` (one sheet, one save/delete path).
 - Times of day are local `'HH:mm'` strings (`src/core/time/timeOfDay.js`).
   No timestamps or UTC for planning; pure logic gets "now" passed in
   (`today` + minutes since midnight), screens get it from `useNow()`.

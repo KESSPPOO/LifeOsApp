@@ -2,7 +2,8 @@
 //
 // The app's navigation: one bottom-tab navigator holding every route in
 // src/config/nav.js as siblings (ADR-004). ShellLayout (top bar) wraps the
-// navigator, BottomNav is its tab bar (I dag · Plan · Mere, ADR-005), and
+// navigator, BottomNav is its tab bar (I dag · Tidshjul · Plan · Mere,
+// ADR-005/007), and
 // Android Back walks the full switch history (BACK_BEHAVIOR). Screens that
 // are not tabs are opened from Mere.
 import React from 'react';
@@ -24,6 +25,7 @@ import NotesScreen      from '../../screens/NotesScreen';
 import LinksScreen      from '../../screens/LinksScreen';
 import TodayScreen      from '../../features/today/screens/TodayScreen';
 import PlanScreen       from '../../features/plan/screens/PlanScreen';
+import TimewheelScreen  from '../../features/timewheel/screens/TimewheelScreen';
 import MoreScreen       from './MoreScreen';
 
 const Tab = createBottomTabNavigator();
@@ -59,6 +61,7 @@ export function AppNavigator({ legacyProps }) {
         screenOptions={{ headerShown: false }}
       >
         <Tab.Screen name="today">{() => <TodayScreen {...legacyProps.today} />}</Tab.Screen>
+        <Tab.Screen name="timewheel" component={TimewheelScreen} />
         <Tab.Screen name="more" component={MoreScreen} />
         <Tab.Screen name="home">{() => <HomeScreen {...legacyProps.home} />}</Tab.Screen>
         <Tab.Screen name="uni">{() => <UniScreen {...legacyProps.uni} />}</Tab.Screen>

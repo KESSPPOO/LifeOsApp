@@ -3,10 +3,11 @@
 // The app's routes: the single source of truth for route names (`id`, used
 // as the React Navigation route name), Danish labels, icons, which routes
 // are bottom-bar tabs (`tab`) and which Mere group the others belong to
-// (`section`). See ADR-005 in docs/ARCHITECTURE_DECISIONS.md.
+// (`section`). See ADR-005 and ADR-007 in docs/ARCHITECTURE_DECISIONS.md.
 //
-// Bottom bar: I dag · Plan · Mere. Træning and Mad become tabs between Plan
-// and Mere once those modules exist. Everything else is listed on Mere.
+// Bottom bar: I dag · Tidshjul · Plan · Mere. Træning and Mad become tabs
+// between Plan and Mere once those modules exist. Everything else is listed
+// on Mere.
 //
 // Note: the Plan route keeps the id 'journal' (the Tasks screen's old
 // internal name). Route ids are not storage keys (those live in
@@ -16,6 +17,7 @@ import { t } from '../core/i18n/index.js';
 
 export const NAV = [
   { id: 'today',     label: t('nav.today'),     icon: '☀️', tab: true },
+  { id: 'timewheel', label: t('nav.timewheel'), icon: '🕒', tab: true },
   { id: 'journal',   label: t('nav.plan'),      icon: '📋', tab: true },
   { id: 'more',      label: t('nav.more'),      icon: '☰',  tab: true },
   { id: 'groceries', label: t('nav.groceries'), icon: '🛒', section: 'life' },

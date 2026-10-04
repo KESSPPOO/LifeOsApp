@@ -384,3 +384,45 @@ older app versions ignore the extra keys.
   stays open and visible; nothing is completed automatically.
 - Overlaps are possible and are not detected or resolved yet; that belongs
   to the Timewheel.
+
+---
+
+## ADR-007: Tidshjul (Timewheel) as a primary tab, built as a view
+
+- **Status:** accepted (Session 8, 2026-10-04). Extends ADR-005.
+
+### Context
+Tasks can now carry a local start time and duration (ADR-006). The first
+real consumer of that schedule is the Timewheel: a glanceable picture of
+now, next and the shape of the day. It belongs with the daily core (I dag,
+Plan), not under Mere.
+
+### Decision
+- **Bottom bar: I dag · Tidshjul · Plan · Mere.** Route id `timewheel`,
+  Danish label "Tidshjul". Træning and Mad still slot in between Plan and
+  Mere later; the bar stays data-driven from `src/config/nav.js`.
+- **A view, not a store.** Timewheel reads the tasks store and persists
+  nothing. `src/features/timewheel/logic.js` turns the tasks of one
+  selected date into items (start/end minutes, point vs interval, status,
+  overview lane, overlaps), timeline rows and ring geometry.
+- **One NU/NÆSTE rule.** The selection moved from I dag's logic into
+  `src/features/tasks/focus.js` (`selectFocus`); I dag and Timewheel both
+  call it, and a test asserts they agree for the same date and time.
+  Another date has no live "now": a future day shows its first planned
+  task, a past day a short summary.
+- **Overlap detection is a scheduling rule** (`findOverlaps` in
+  `src/features/tasks/schedule.js`): half-open intervals, so touching
+  items do not overlap; points (no duration) and finished tasks are not
+  intervals for this purpose. Conflicts are shown, never resolved.
+- **One task editor.** Plan's sheet wiring became `useEntryEditor`
+  (`src/features/plan/useEntryEditor.js`); Timewheel opens the same sheet
+  ("Flyt" starts in the time field). The I dag NU/NÆSTE cards became a
+  shared component (`src/features/tasks/components/ItemRow.js`).
+- **No new dependency.** The 24-hour ring uses `react-native-svg`, already
+  installed (previously only used by the unused `ProgressRing`).
+
+### Consequences
+- Four tabs at 12 pt labels still fit a 360 dp phone; a fifth (Træning)
+  will need a check.
+- The ring is supplemental: every item, with time, length, state and
+  overlap in words, is in the timeline below it.

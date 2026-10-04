@@ -18,9 +18,9 @@ const ROUTES = NAV.map(n => n.id);
 
 const LEGACY_ROUTES = ['home', 'uni', 'journal', 'finances', 'stats', 'groceries', 'goals', 'notes', 'links'];
 
-test('every pre-ADR-005 route id still exists (no renames); only today and more are new', () => {
+test('every pre-ADR-005 route id still exists (no renames); only today, timewheel and more are new', () => {
   for (const id of LEGACY_ROUTES) assert.ok(ROUTES.includes(id), id);
-  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'more']);
+  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'more']);
   assert.equal(new Set(ROUTES).size, ROUTES.length, 'unique');
 });
 
@@ -28,9 +28,9 @@ test('the app starts on I dag', () => {
   assert.equal(INITIAL_ROUTE, 'today');
 });
 
-test('bottom bar is I dag · Plan · Mere (ADR-005)', () => {
-  assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'journal', 'more']);
-  assert.deepEqual(TAB_ITEMS.map(n => n.label), ['I dag', 'Plan', 'Mere']);
+test('bottom bar is I dag · Tidshjul · Plan · Mere (ADR-005, ADR-007)', () => {
+  assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'timewheel', 'journal', 'more']);
+  assert.deepEqual(TAB_ITEMS.map(n => n.label), ['I dag', 'Tidshjul', 'Plan', 'Mere']);
 });
 
 test('University, Finances, Links and the old Home are not primary', () => {
@@ -121,6 +121,14 @@ test('Back walks every switch, duplicates included (same as the old manual histo
   ['journal', 'today', 'journal', 'notes'].forEach(r => nav.navigate(r));
   assert.deepEqual([nav.back(), nav.back(), nav.back(), nav.back(), nav.back()],
     ['journal', 'today', 'journal', 'today', 'EXIT']);
+});
+
+test('Tidshjul is a tab: reachable directly, and Back returns from it', () => {
+  const nav = createNav();
+  nav.navigate('timewheel');
+  nav.navigate('journal');
+  assert.deepEqual([nav.back(), nav.back(), nav.back()], ['timewheel', 'today', 'EXIT']);
+  assert.equal(tabFor('timewheel'), 'timewheel');
 });
 
 test('choosing the current screen again records nothing', () => {

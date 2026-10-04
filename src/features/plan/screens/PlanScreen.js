@@ -19,13 +19,12 @@
 // - Drag-to-reorder (DraggableList) for the lists whose order is the
 //   user's: today's untimed tasks, undated tasks and habits. Those rows
 //   have a fixed height, which DraggableList needs.
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
 import { COLORS } from '../../../config/colors';
 import { CheckButton } from '../../../components/CheckButton';
-import { CustomAlert } from '../../../components/CustomAlert';
 import { DraggableList } from '../../../components/DraggableList';
 import { capitalize } from '../../../data/helpers';
 import { computeStreak } from '../../../data/tasks';
@@ -35,10 +34,8 @@ import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
 import { useJournal, useSetJournal, useToggleEntry } from '../../tasks/store';
 import { taskItem, describeItem } from '../../tasks/items';
-import {
-  groupPlan, addTask, updateTask, addHabit, updateHabit, deleteEntry, reorderSection, formFromEntry,
-} from '../logic';
-import { TaskSheet } from '../components/TaskSheet';
+import { groupPlan, addTask, reorderSection } from '../logic';
+import { useEntryEditor } from '../useEntryEditor';
 import { Composer } from '../components/Composer';
 
 const TASK_ROW_HEIGHT = 64;
@@ -55,11 +52,7 @@ export default function PlanScreen() {
   const [toggledIds, setToggledIds] = useState(() => new Set());
   const plan = useMemo(() => groupPlan(journal, today, toggledIds), [journal, today, toggledIds]);
 
-  // { key, kind: 'task' | 'habit', id (null = new), initial, onSaved }
-  const [sheet, setSheet] = useState(null);
-  const sheetKey = useRef(0);
-  const [alertConfig, setAlertConfig] = useState(null);
-  const closeAlert = () => setAlertConfig(null);
+  const { openEditor, showAlert, closeAlert, editorElements } = useEntryEditor({ today, sync });
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const toggle = (id) => {
@@ -73,39 +66,7 @@ export default function PlanScreen() {
   const addFromComposer = (text, date) =>
     setJournal(prev => addTask(prev, { text, subject: '', priority: 'medium', date }));
 
-  const openSheet = (kind, entry, onSaved) => {
-    sync(); // the sheet's "I dag" / "I morgen" use the current day
-    sheetKey.current += 1;
-    setSheet({ key: sheetKey.current, kind, id: entry.id ?? null, initial: formFromEntry(entry), onSaved });
-  };
-
-  const saveSheet = (fields) => {
-    const { kind, id, onSaved } = sheet;
-    setJournal(prev => {
-      if (kind === 'habit') return id === null ? addHabit(prev, fields) : updateHabit(prev, id, fields);
-      return id === null ? addTask(prev, fields) : updateTask(prev, id, fields);
-    });
-    onSaved?.();
-    setSheet(null);
-  };
-
-  const confirmDelete = () => {
-    const entry = journal.find(x => x.id === sheet.id);
-    setAlertConfig({
-      title: t('taskForm.delete'),
-      message: t('taskForm.deleteMessage', { title: entry?.text ?? '' }),
-      buttons: [
-        { text: t('taskForm.cancel'), style: 'cancel', onPress: closeAlert },
-        { text: t('taskForm.delete'), style: 'destructive', onPress: () => {
-          setJournal(prev => deleteEntry(prev, sheet.id));
-          closeAlert();
-          setSheet(null);
-        } },
-      ],
-    });
-  };
-
-  const confirmClearAll = () => setAlertConfig({
+  const confirmClearAll = () => showAlert({
     title: t('plan.clearAllTitle'),
     message: t('plan.clearAllMessage', { count: journal.length }),
     buttons: [
@@ -132,7 +93,7 @@ export default function PlanScreen() {
         timeColumn={timeColumn}
         fixed={fixed}
         onToggle={() => toggle(task.id)}
-        onOpen={() => openSheet('task', task)}
+        onOpen={() => openEditor('task', task)}
       />
     );
   };
@@ -198,7 +159,7 @@ export default function PlanScreen() {
 
         <Section
           title={t('plan.habits')}
-          action={{ label: t('plan.addHabit'), onPress: () => openSheet('habit', { text: '', icon: '🌟' }) }}
+          action={{ label: t('plan.addHabit'), onPress: () => openEditor('habit', { text: '', icon: '🌟' }) }}
         >
           <DraggableList
             items={plan.habits}
@@ -210,7 +171,7 @@ export default function PlanScreen() {
                 habit={habit}
                 today={today}
                 onToggle={() => toggle(habit.id)}
-                onOpen={() => openSheet('habit', habit)}
+                onOpen={() => openEditor('habit', habit)}
               />
             )}
           />
@@ -231,22 +192,10 @@ export default function PlanScreen() {
       <Composer
         currentDay={currentDay}
         onAdd={addFromComposer}
-        onDetails={(text, date, clear) => openSheet('task', { text, date }, clear)}
+        onDetails={(text, date, clear) => openEditor('task', { text, date }, { onSaved: clear })}
       />
 
-      {sheet ? (
-        <TaskSheet
-          key={sheet.key}
-          kind={sheet.kind}
-          editing={sheet.id !== null}
-          initial={sheet.initial}
-          today={today}
-          onSave={saveSheet}
-          onDelete={confirmDelete}
-          onClose={() => setSheet(null)}
-        />
-      ) : null}
-      <CustomAlert config={alertConfig} />
+      {editorElements}
     </KeyboardAvoidingView>
   );
 }

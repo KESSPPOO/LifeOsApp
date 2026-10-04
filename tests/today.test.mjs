@@ -3,10 +3,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildToday, rankDueTasks, goalsNeedingAttention, describeGoal, greetingKey,
+  buildToday, goalsNeedingAttention, describeGoal, greetingKey,
   REST_LIMIT, GOAL_ATTENTION_DAYS,
 } from '../src/features/today/logic.js';
 import { describeItem } from '../src/features/tasks/items.js';
+import { rankDueTasks } from '../src/features/tasks/focus.js';
 import { timeToMinutes } from '../src/core/time/timeOfDay.js';
 import { toggleJournalEntry } from '../src/data/tasks.js';
 

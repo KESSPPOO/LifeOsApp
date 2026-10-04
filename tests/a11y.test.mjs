@@ -33,12 +33,14 @@ test('textSub fails 4.5:1, so the new UI does not use it for text', () => {
 });
 
 // The new UI: the app shell, the shared components it added, and every
-// screen/component under src/features/today and src/features/plan (new
-// files there are picked up).
+// screen/component under src/features/today, plan and timewheel (new files
+// there are picked up).
 const NEW_UI = [
   ...sourceFiles(repoPath('../src/app/navigation')),
   ...sourceFiles(repoPath('../src/features/today')).filter(f => !f.endsWith('logic.js')),
   ...sourceFiles(repoPath('../src/features/plan')).filter(f => !f.endsWith('logic.js')),
+  ...sourceFiles(repoPath('../src/features/timewheel')).filter(f => !f.endsWith('logic.js')),
+  ...sourceFiles(repoPath('../src/features/tasks/components')),
   repoPath('../src/components/HeaderBar.js'),
   repoPath('../src/components/LinkRow.js'),
   repoPath('../src/components/CheckButton.js'),

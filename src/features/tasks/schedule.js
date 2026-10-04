@@ -93,3 +93,41 @@ export function withSchedule(task, { startTime, durationMinutes }) {
   if (isValidDuration(durationMinutes)) next.durationMinutes = durationMinutes;
   return next;
 }
+
+/**
+ * Which intervals overlap. intervals: [{ id, start, end }] in minutes on a
+ * common day axis (end exclusive, end > start). Intervals that only touch
+ * (10:00–11:00 and 11:00–12:00) do not overlap. Deterministic: ordered by
+ * start, then end, then input order; the input is not modified.
+ *
+ * Returns { pairs, groups }:
+ *   pairs   every overlapping pair [earlierId, laterId]
+ *   groups  sets of ids joined by overlaps (A–B and B–C make one group of
+ *           three), each with at least two ids
+ */
+export function findOverlaps(intervals) {
+  const sorted = intervals
+    .map((interval, index) => ({ ...interval, index }))
+    .sort((a, b) => a.start - b.start || a.end - b.end || a.index - b.index);
+  const pairs = [];
+  const groups = [];
+  let open = [];
+  let group = [];
+  let groupEnd = -Infinity;
+  for (const current of sorted) {
+    open = open.filter(prev => prev.end > current.start);
+    for (const prev of open) pairs.push([prev.id, current.id]);
+    open.push(current);
+
+    if (current.start < groupEnd) {
+      group.push(current.id);
+      groupEnd = Math.max(groupEnd, current.end);
+    } else {
+      if (group.length > 1) groups.push(group);
+      group = [current.id];
+      groupEnd = current.end;
+    }
+  }
+  if (group.length > 1) groups.push(group);
+  return { pairs, groups };
+}
