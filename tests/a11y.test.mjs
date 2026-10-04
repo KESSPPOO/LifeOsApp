@@ -44,6 +44,8 @@ const NEW_UI = [
   ...sourceFiles(repoPath('../src/features/today')).filter(f => !f.endsWith('logic.js')),
   ...sourceFiles(repoPath('../src/features/plan')).filter(f => !f.endsWith('logic.js')),
   ...sourceFiles(repoPath('../src/features/timewheel')).filter(f => !f.endsWith('logic.js')),
+  ...sourceFiles(repoPath('../src/features/routines')).filter(f => !/(model|store)\.js$/.test(f)),
+  repoPath('../src/components/Choice.js'),
   ...sourceFiles(repoPath('../src/features/tasks/components')),
   repoPath('../src/components/HeaderBar.js'),
   repoPath('../src/components/LinkRow.js'),
@@ -61,7 +63,7 @@ test('new UI files: no text below 12 pt, no textSub', () => {
 test('radio chips announce their checked state', () => {
   for (const rel of NEW_UI) {
     const src = readFileSync(rel, 'utf8');
-    if (src.includes('accessibilityRole="radio"')) assert.match(src, /accessibilityState=\{\{ checked:/, rel);
+    if (/accessibilityRole=("radio"|\{role\})/.test(src)) assert.match(src, /accessibilityState=\{\{ checked:/, rel);
   }
 });
 
@@ -69,7 +71,7 @@ test('interactive elements in the new UI declare a role', () => {
   for (const rel of NEW_UI) {
     const src = readFileSync(rel, 'utf8');
     const touchables = (src.match(/<TouchableOpacity\b/g) || []).length;
-    const roles = (src.match(/accessibilityRole="(button|checkbox|tab|radio)"/g) || []).length;
+    const roles = (src.match(/accessibilityRole=(?:"(?:button|checkbox|tab|radio)"|\{role\})/g) || []).length;
     assert.ok(roles >= touchables, `${rel}: ${touchables} touchables, ${roles} roles`);
   }
 });

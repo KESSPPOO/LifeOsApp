@@ -20,9 +20,8 @@
 // Sorting is stable everywhere: equal keys keep the stored order.
 import { groupJournal } from '../../data/tasks.js';
 import {
-  isTimed, compareStart, compareDateStart, withSchedule, getSchedule, isValidDuration, DURATION_CHOICES,
+  isTimed, compareStart, compareDateStart, withSchedule, getSchedule, scheduleFormValues, readScheduleInput,
 } from '../tasks/schedule.js';
-import { parseTimeInput } from '../../core/time/timeOfDay.js';
 import { dayProgress } from '../tasks/items.js';
 
 const doneLast = (a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0);
@@ -122,16 +121,12 @@ export function reorderSection(list, reordered) {
 /** Form values for editing an existing task or habit (or a new one from `draft`). */
 export function formFromEntry(entry) {
   const schedule = getSchedule(entry);
-  const duration = schedule?.duration ?? null;
-  const preset = DURATION_CHOICES.includes(duration);
   return {
     text: entry.text ?? '',
     subject: entry.subject ?? '',
     priority: entry.priority ?? 'medium',
     date: entry.date ?? '',
-    timeText: schedule ? entry.startTime : '',
-    durationChoice: duration === null ? null : preset ? duration : 'custom',
-    customDuration: duration !== null && !preset ? String(duration) : '',
+    ...scheduleFormValues(schedule ? entry.startTime : null, schedule?.duration),
     icon: entry.icon ?? '🌟',
   };
 }
@@ -146,19 +141,10 @@ export function readTaskForm(kind, form) {
   if (!text) return { error: 'taskForm.missingTitle' };
   if (kind === 'habit') return { fields: { text, icon: form.icon.trim() || '🌟' } };
 
-  let startTime = null;
-  let durationMinutes = null;
-  if (form.timeText.trim()) {
-    if (!form.date) return { error: 'taskForm.timeNeedsDate' };
-    startTime = parseTimeInput(form.timeText);
-    if (!startTime) return { error: 'taskForm.timeInvalid' };
-    if (form.durationChoice === 'custom') {
-      durationMinutes = Number(form.customDuration.trim());
-      if (!form.customDuration.trim() || !isValidDuration(durationMinutes)) return { error: 'taskForm.durationInvalid' };
-    } else if (isValidDuration(form.durationChoice)) {
-      durationMinutes = form.durationChoice;
-    }
-  }
+  if (form.timeText.trim() && !form.date) return { error: 'taskForm.timeNeedsDate' };
+  const schedule = readScheduleInput(form);
+  if (schedule.error) return schedule;
+  const { startTime, durationMinutes } = schedule;
   return {
     fields: {
       text, subject: form.subject.trim(), priority: form.priority,

@@ -1,11 +1,13 @@
 // src/features/tasks/components/ItemRow.js
 //
-// How a task or habit item (../items.js) is shown on I dag and Timewheel:
-// the NU card, the NÆSTE outline and plain overview rows, plus the small
-// "NU" / "NÆSTE" label above them. Shared so both screens look and read
-// the same.
+// How a task, habit or routine item (../items.js) is shown on I dag and
+// Timewheel: the NU card, the NÆSTE outline and plain overview rows, plus
+// the small "NU" / "NÆSTE" label above them. Shared so both screens look
+// and read the same. A task or habit has a check button; a routine is
+// ticked step by step, so its row opens the day's checklist instead.
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { t } from '../../../core/i18n';
 import { COLORS } from '../../../config/colors';
 import { CheckButton } from '../../../components/CheckButton';
 
@@ -22,12 +24,21 @@ export function FocusLabel({ text, accent }) {
 }
 
 /**
- * A task or habit with its check button. variant: 'now' (the NU card),
- * 'next' (the NÆSTE outline) or a plain overview row.
+ * A task or habit with its check button, or a routine that opens its
+ * checklist (onOpen). variant: 'now' (the NU card), 'next' (the NÆSTE
+ * outline) or a plain overview row.
  */
-export function ItemRow({ item, meta, onToggle, variant }) {
+export function ItemRow({ item, meta, onToggle, onOpen, variant }) {
+  const routine = item.kind === 'routine';
+  const Container = routine ? TouchableOpacity : View;
+  const containerProps = routine ? {
+    onPress: () => onOpen(item),
+    accessibilityRole: 'button',
+    accessibilityLabel: [item.timeLabel, item.title, meta].filter(Boolean).join(', '),
+    accessibilityHint: t('routine.openHint'),
+  } : {};
   return (
-    <View style={variant ? [styles.focus, variant === 'now' && styles.focusNow] : styles.row}>
+    <Container style={variant ? [styles.focus, variant === 'now' && styles.focusNow] : styles.row} {...containerProps}>
       <View style={styles.textCol}>
         {item.timeLabel ? (
           <Text style={[styles.timeLabel, variant === 'now' && styles.timeLabelNow]}>{item.timeLabel}</Text>
@@ -37,8 +48,12 @@ export function ItemRow({ item, meta, onToggle, variant }) {
         </Text>
         {meta ? <Text style={styles.meta}>{meta}</Text> : null}
       </View>
-      <CheckButton checked={item.done} onPress={() => onToggle(item)} label={item.title} />
-    </View>
+      {routine ? (
+        <Text style={styles.chevron}>›</Text>
+      ) : (
+        <CheckButton checked={item.done} onPress={() => onToggle(item)} label={item.title} />
+      )}
+    </Container>
   );
 }
 
@@ -72,4 +87,5 @@ const styles = StyleSheet.create({
   timeLabel:    { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, marginBottom: 2, fontVariant: ['tabular-nums'] },
   timeLabelNow: { fontSize: 15, color: COLORS.text },
   doneText:     { color: COLORS.textMuted, textDecorationLine: 'line-through' },
+  chevron:      { fontSize: 24, color: COLORS.textMuted, paddingHorizontal: 14 },
 });

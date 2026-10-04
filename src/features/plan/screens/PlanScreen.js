@@ -6,6 +6,9 @@
 // delete (sheet), tick off, habits with their week, drag to reorder, clear
 // all. Grouping and every list change are pure functions in ../logic.js.
 //
+// Routines are not tasks: today's routines are listed in their own small
+// "Rutiner" section (opening the day's checklist), with a link to Rutiner.
+//
 // Time-bound and flexible items are kept apart: today's timed tasks are a
 // time-ordered list with the time in its own column; tasks without a time
 // follow under their own heading. Timed tasks never disappear when their
@@ -32,11 +35,16 @@ import { t, formatDateLong, formatRelativeDay, formatDuration } from '../../../c
 import { localDateKey, addDays } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
+import { useNavigation } from '@react-navigation/native';
+import { LinkRow } from '../../../components/LinkRow';
 import { useJournal, useSetJournal, useTickedThisVisit } from '../../tasks/store';
-import { taskItem, describeItem } from '../../tasks/items';
+import { taskItem, describeItem, scheduleLabel } from '../../tasks/items';
 import { groupPlan, addTask, reorderSection } from '../logic';
 import { useEntryEditor } from '../useEntryEditor';
 import { Composer } from '../components/Composer';
+import { useRoutines, useRoutineLog } from '../../routines/store';
+import { occurrencesOn, describeProgress } from '../../routines/model';
+import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 
 const TASK_ROW_HEIGHT = 64;
 const HABIT_ROW_HEIGHT = 88;
@@ -52,6 +60,12 @@ export default function PlanScreen() {
   const plan = useMemo(() => groupPlan(journal, today, toggledIds), [journal, today, toggledIds]);
 
   const { openEditor, showAlert, closeAlert, editorElements } = useEntryEditor({ today, sync });
+
+  const navigation = useNavigation();
+  const routines = useRoutines();
+  const routineLog = useRoutineLog();
+  const routinesToday = useMemo(() => occurrencesOn(routines, routineLog, today), [routines, routineLog, today]);
+  const { openChecklist, checklistElement } = useRoutineChecklist();
 
   // ── Actions ─────────────────────────────────────────────────────────────
   // Today at the moment of an action (also moves the screen to a new day).
@@ -130,6 +144,24 @@ export default function PlanScreen() {
           {todayTasks.length === 0 ? <Text style={styles.muted}>{t('plan.todayEmpty')}</Text> : null}
         </Section>
 
+        {/* Routines: their own small section, never mixed into the tasks. */}
+        {routinesToday.length > 0 ? (
+          <Section title={t('today.routines')}>
+            {routinesToday.map(occurrence => (
+              <LinkRow
+                key={occurrence.id}
+                label={occurrence.title}
+                meta={[scheduleLabel(occurrence), describeProgress(occurrence)].filter(Boolean).join(' · ')}
+                onPress={() => openChecklist(occurrence.routineId, occurrence.date)}
+                style={styles.linkRow}
+              />
+            ))}
+            <LinkRow label={t('routines.all')} onPress={() => navigation.navigate('routines')} style={styles.linkRow} />
+          </Section>
+        ) : (
+          <LinkRow icon="🔁" label={t('nav.routines')} onPress={() => navigation.navigate('routines')} style={styles.routinesLink} />
+        )}
+
         {plan.overdue.length > 0 ? (
           <Section title={t('plan.overdue')}>
             {plan.overdue.map(task => renderTask(task))}
@@ -190,6 +222,7 @@ export default function PlanScreen() {
       />
 
       {editorElements}
+      {checklistElement}
     </KeyboardAvoidingView>
   );
 }
@@ -314,6 +347,8 @@ const styles = StyleSheet.create({
   dotDone:  { backgroundColor: COLORS.green },
   dotToday: { borderWidth: 2, borderColor: COLORS.textMuted },
 
+  linkRow:      { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  routinesLink: { marginBottom: 24, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   hint:         { fontSize: 13, color: COLORS.textMuted, marginBottom: 8 },
   clearAll:     { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   clearAllText: { fontSize: 15, color: COLORS.red },

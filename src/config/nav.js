@@ -20,6 +20,7 @@ export const NAV = [
   { id: 'timewheel', label: t('nav.timewheel'), icon: '🕒', tab: true },
   { id: 'journal',   label: t('nav.plan'),      icon: '📋', tab: true },
   { id: 'more',      label: t('nav.more'),      icon: '☰',  tab: true },
+  { id: 'routines',  label: t('nav.routines'),  icon: '🔁', section: 'life' },
   { id: 'groceries', label: t('nav.groceries'), icon: '🛒', section: 'life' },
   { id: 'goals',     label: t('nav.goals'),     icon: '🗺', section: 'life' },
   { id: 'notes',     label: t('nav.notes'),     icon: '💡', section: 'life' },

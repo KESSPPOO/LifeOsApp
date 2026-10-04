@@ -10,7 +10,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, Platform, StyleShe
 import { COLORS } from '../../../config/colors';
 import { t } from '../../../core/i18n';
 import { addDays } from '../../../core/time/dates';
-import { Choice } from './Choice';
+import { Choice } from '../../../components/Choice';
 
 /** Day offsets from today; null = no date. */
 const DAYS = [

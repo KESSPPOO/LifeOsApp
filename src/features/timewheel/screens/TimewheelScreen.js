@@ -6,7 +6,7 @@
 //      day "Første planlagte" or a short summary, never a fake "now")
 //   2. the compact 24-hour ring (orientation)
 //   3. the linear timeline (detail; every item is here, with words)
-// It is a view over the stored tasks (buildDay in ../logic.js) and stores
+// It is a view over the stored tasks and routines (buildDay in ../logic.js) and stores
 // nothing of its own. Tapping an item, or "Åbn" / "Flyt" on an overlap,
 // opens the same task sheet as Plan (useEntryEditor). Nothing is ever moved
 // automatically.
@@ -21,6 +21,8 @@ import { localDateKey, addDays, daysBetween, isoWeekNumber } from '../../../core
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
 import { useJournal, useTickedThisVisit } from '../../tasks/store';
+import { useRoutines, useRoutineLog } from '../../routines/store';
+import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 import { describeItem } from '../../tasks/items';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { useEntryEditor } from '../../plan/useEntryEditor';
@@ -34,6 +36,9 @@ const FLEXIBLE_SHOWN = 3;
 export default function TimewheelScreen() {
   const navigation = useNavigation();
   const journal = useJournal();
+  const routines = useRoutines();
+  const routineLog = useRoutineLog();
+  const { openChecklist, checklistElement } = useRoutineChecklist();
   const [now, sync] = useNow();
   const today = localDateKey(now);
   const nowMinutes = minutesOfDay(now);
@@ -51,15 +56,22 @@ export default function TimewheelScreen() {
   const [keepVisibleIds, tick] = useTickedThisVisit(sync);
   const clock = clockFor(date, today, nowMinutes);
   const day = useMemo(
-    () => buildDay({ journal, date, today, nowMinutes: clock, keepVisibleIds }),
-    [journal, date, today, clock, keepVisibleIds],
+    () => buildDay({ journal, date, today, nowMinutes: clock, keepVisibleIds, routines, routineLog }),
+    [journal, date, today, clock, keepVisibleIds, routines, routineLog],
   );
   const rows = useMemo(() => timelineRows(day), [day]);
 
   const toggle = (item) => tick(item.id);
   // Stable, so the memoised timeline does not re-render for unrelated state.
-  const open = useCallback((item) => openEditor('task', item.task), [openEditor]);
-  const move = (item) => openEditor('task', item.task, { focus: 'time' });
+  // A task opens the task sheet; a routine opens that day's checklist.
+  const open = useCallback((item) => (item.kind === 'routine'
+    ? openChecklist(item.routineId, item.date)
+    : openEditor('task', item.task)), [openChecklist, openEditor]);
+  // "Flyt": a task's time is edited in the task sheet; a routine's time
+  // belongs to the routine itself, edited on Rutiner.
+  const move = (item) => (item.kind === 'routine'
+    ? navigation.navigate('routines', { editId: item.routineId })
+    : openEditor('task', item.task, { focus: 'time' }));
 
   const relativeLabel = Math.abs(daysBetween(today, date)) <= 1 ? capitalize(formatRelativeDay(date, today)) : null;
 
@@ -97,14 +109,14 @@ export default function TimewheelScreen() {
           <>
             <FocusLabel text={t('today.now')} accent />
             {day.focus.now ? (
-              <ItemRow item={day.focus.now} meta={describeItem(day.focus.now, today)} onToggle={toggle} variant="now" />
+              <ItemRow item={day.focus.now} meta={describeItem(day.focus.now, today)} onToggle={toggle} onOpen={open} variant="now" />
             ) : (
               <Text style={styles.quiet}>{t('timewheel.nothingNow')}</Text>
             )}
             {day.focus.next ? (
               <>
                 <FocusLabel text={t('today.next')} />
-                <ItemRow item={day.focus.next} meta={describeItem(day.focus.next, today)} onToggle={toggle} variant="next" />
+                <ItemRow item={day.focus.next} meta={describeItem(day.focus.next, today)} onToggle={toggle} onOpen={open} variant="next" />
               </>
             ) : null}
           </>
@@ -119,6 +131,7 @@ export default function TimewheelScreen() {
               item={day.focus.first}
               meta={describeItem(day.focus.first, today, { plannedDay: false })}
               onToggle={toggle}
+              onOpen={open}
               variant="next"
             />
           </>
@@ -153,6 +166,15 @@ export default function TimewheelScreen() {
         )}
 
         {/* ── Flexible tasks: secondary, never placed on the timeline ── */}
+        {day.flexibleRoutines.length > 0 ? (
+          <View style={styles.flexible}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">{t('today.routines')}</Text>
+            {day.flexibleRoutines.map(item => (
+              <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={open} />
+            ))}
+          </View>
+        ) : null}
+
         {day.flexible.length > 0 ? (
           <View style={styles.flexible}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -172,6 +194,7 @@ export default function TimewheelScreen() {
         ) : null}
       </ScrollView>
       {editorElements}
+      {checklistElement}
     </View>
   );
 }

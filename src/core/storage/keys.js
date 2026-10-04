@@ -38,6 +38,10 @@ export const KEY_SPECS = Object.freeze({
   // ── Links (migrated to features/links; also read by Home Quick Links) ──
   links:              { type: 'array',   owner: 'features/links', description: "Bookmarks in the user's order: { id, name, url, icon, starred } (at most 6 starred; shown on Home)." },
 
+  // ── Routines (features/routines, ADR-008) ─────────────────────────────
+  routines:           { type: 'array',   owner: 'features/routines', description: 'Routine templates: { id, name, enabled, activeFrom: YYYY-MM-DD, daysOfWeek: [1..7] (1 = Monday), startTime?: "HH:mm", durationMinutes?, steps: [{ id, text }] }. Occurrences are derived, never stored.' },
+  routineLog:         { type: 'array',   owner: 'features/routines', description: 'Routine completion per date: { routineId, date: YYYY-MM-DD, completedStepIds: [] }. Kept when a routine is deleted.' },
+
   // ── Still owned by App.js (not migrated yet) ──────────────────────────
   isFirstUse:         { type: 'boolean', owner: 'App.js', description: 'true until onboarding completes.' },
   userName:           { type: 'string',  owner: 'App.js', description: 'Name from onboarding.' },

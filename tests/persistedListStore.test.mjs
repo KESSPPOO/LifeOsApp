@@ -11,6 +11,7 @@ import {
   LEGACY_JOURNAL, LEGACY_GROCERIES, LEGACY_GOALS, LEGACY_NOTES, LEGACY_LINKS,
   JOURNAL_TEST_SEED, GROCERIES_TEST_SEED, GOALS_TEST_SEED, NOTES_TEST_SEED, LINKS_TEST_SEED,
   parsed, raw, setupListStore, failReadsOf, failWritesOf,
+  STORED_ROUTINES, STORED_ROUTINE_LOG, ROUTINES_TEST_SEED,
 } from './fixtures.mjs';
 
 const MODULES = [
@@ -19,9 +20,13 @@ const MODULES = [
   { name: 'goals', key: KEYS.goals, stored: LEGACY_GOALS, seed: GOALS_TEST_SEED },
   { name: 'notes', key: KEYS.notes, stored: LEGACY_NOTES, seed: NOTES_TEST_SEED },
   { name: 'links', key: KEYS.links, stored: LEGACY_LINKS, seed: LINKS_TEST_SEED },
+  // Routines are new (Session 9): "stored" is their own first format.
+  { name: 'routines', key: KEYS.routines, stored: STORED_ROUTINES, seed: ROUTINES_TEST_SEED },
+  // Log entries have no id: they are identified by routine + date.
+  { name: 'routineLog', key: KEYS.routineLog, stored: STORED_ROUTINE_LOG, seed: [], idOf: x => `${x.routineId}@${x.date}` },
 ];
 
-for (const { name, key, stored, seed } of MODULES) {
+for (const { name, key, stored, seed, idOf = x => x.id } of MODULES) {
   const setup = (values) => setupListStore({ key, values, seed });
   const onDisk = (adapter) => parsed(adapter, key);
   const t = (title, fn) => test(`[${name}] ${title}`, fn);
@@ -108,7 +113,7 @@ for (const { name, key, stored, seed } of MODULES) {
     const { store, adapter } = setup({ [key]: stored });
     await store.getState().hydrate();
     store.getState().setItems(prev => [...prev, { id: 77 }]);
-    store.getState().setItems(prev => prev.filter(x => x.id !== stored[0].id));
+    store.getState().setItems(prev => prev.filter(x => idOf(x) !== idOf(stored[0])));
     await store.getState().flush();
     const expected = [...stored.slice(1), { id: 77 }];
     assert.deepEqual(onDisk(adapter), expected);

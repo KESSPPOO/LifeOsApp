@@ -74,6 +74,20 @@ export const JOURNAL_TEST_SEED = [{ id: 900, text: 'demo task', recurring: false
 export const GROCERIES_TEST_SEED = [{ id: 900, text: 'demo item', category: 'other', done: false }];
 export const LINKS_TEST_SEED = [{ id: 900, name: 'demo', url: 'https://example.com', icon: '🔗', starred: false }];
 export const NOTES_TEST_SEED = [{ id: 900, title: 'demo note', content: '', tags: [], date: '2026-01-01' }];
+// Routines (Session 9) as the app writes them: templates and the per-date log.
+export const STORED_ROUTINES = [
+  {
+    id: 'r1', name: 'Morgenrutine', enabled: true, activeFrom: '2026-03-01', daysOfWeek: [1, 2, 3, 4, 5],
+    startTime: '07:30', durationMinutes: 45,
+    steps: [{ id: 's1', text: 'Stå op' }, { id: 's2', text: 'Børst tænder' }, { id: 's3', text: 'Morgenmad' }],
+  },
+  { id: 'r2', name: 'Aftenrutine', enabled: false, activeFrom: '2026-03-01', daysOfWeek: [1, 2, 3, 4, 5, 6, 7], steps: [{ id: 'a1', text: 'Sluk skærme' }] },
+];
+export const STORED_ROUTINE_LOG = [
+  { routineId: 'r1', date: '2026-03-02', completedStepIds: ['s1', 's2'] },
+  { routineId: 'r2', date: '2026-03-01', completedStepIds: ['a1'] },
+];
+export const ROUTINES_TEST_SEED = [{ id: 'seed', name: 'demo', enabled: true, activeFrom: '2026-01-01', daysOfWeek: [1], steps: [] }];
 export const GOALS_TEST_SEED = [{ id: 900, title: 'demo goal', description: '', target: 1, progress: 0, category: 'Study', priority: 'low', deadline: '', completed: false }];
 
 // The pre-v1.4 separate habits list, migrated into journal by migration 1.

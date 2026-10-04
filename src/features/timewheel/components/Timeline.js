@@ -56,7 +56,7 @@ function TimelineItem({ item, day, onOpen }) {
       style={[styles.itemRow, { minHeight: blockHeight(item) }, active && styles.itemActive]}
       accessibilityRole="button"
       accessibilityLabel={describeTimelineItem(item, day)}
-      accessibilityHint={t('timewheel.openHint')}
+      accessibilityHint={t(item.kind === 'routine' ? 'routine.openHint' : 'timewheel.openHint')}
     >
       <View style={styles.timeCol}>
         <Text style={[styles.startText, item.done && styles.doneText]}>{start}</Text>

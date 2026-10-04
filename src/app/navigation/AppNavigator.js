@@ -26,6 +26,7 @@ import LinksScreen      from '../../screens/LinksScreen';
 import TodayScreen      from '../../features/today/screens/TodayScreen';
 import PlanScreen       from '../../features/plan/screens/PlanScreen';
 import TimewheelScreen  from '../../features/timewheel/screens/TimewheelScreen';
+import RoutinesScreen   from '../../features/routines/screens/RoutinesScreen';
 import MoreScreen       from './MoreScreen';
 
 const Tab = createBottomTabNavigator();
@@ -62,6 +63,7 @@ export function AppNavigator({ legacyProps }) {
       >
         <Tab.Screen name="today">{() => <TodayScreen {...legacyProps.today} />}</Tab.Screen>
         <Tab.Screen name="timewheel" component={TimewheelScreen} />
+        <Tab.Screen name="routines" component={RoutinesScreen} />
         <Tab.Screen name="more" component={MoreScreen} />
         <Tab.Screen name="home">{() => <HomeScreen {...legacyProps.home} />}</Tab.Screen>
         <Tab.Screen name="uni">{() => <UniScreen {...legacyProps.uni} />}</Tab.Screen>

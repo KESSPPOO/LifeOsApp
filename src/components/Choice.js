@@ -1,20 +1,25 @@
-// src/features/plan/components/Choice.js
+// src/components/Choice.js
 //
-// A selectable chip (date, duration, priority). At least 44 pt tall;
+// A selectable chip (date, duration, priority, weekday; Plan and Rutiner). At least 44 pt tall;
 // announced as a radio button with its selected state. Selection shows as
 // a ✓ and bold text, not only colour.
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../../config/colors';
+import { COLORS } from '../config/colors';
 
-export function Choice({ label, selected, onPress }) {
+/**
+ * role: 'radio' (one of several, the default) or 'checkbox' (several may
+ * be chosen, e.g. weekdays). accessibilityLabel overrides the spoken
+ * label when the visible one is short ('M' -> 'Mandag').
+ */
+export function Choice({ label, selected, onPress, role = 'radio', accessibilityLabel }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[styles.choice, selected && styles.selected]}
-      accessibilityRole="radio"
+      accessibilityRole={role}
       accessibilityState={{ checked: Boolean(selected), selected: Boolean(selected) }}
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
     >
       <Text style={[styles.text, selected && styles.textSelected]}>{selected ? `✓ ${label}` : label}</Text>
     </TouchableOpacity>

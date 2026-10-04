@@ -1,9 +1,10 @@
 // src/features/tasks/items.js
 //
-// How a task or habit is presented: one item shape and one Danish
-// description, shared by I dag and Plan so the two screens always agree on
-// a task's state ("I gang til 11:45", "Fra i går", …). Pure; "now" is
-// passed in.
+// How a task, habit or routine occurrence is presented: item shapes and
+// one Danish description, shared by I dag, Plan and Tidshjul so the
+// screens always agree on an item's state ("I gang til 11:45", "Fra i går",
+// "2 af 5 trin", …). Pure; "now" is passed in. (Routine items are built in
+// src/features/routines/model.js.)
 import { getSchedule, scheduleStatus, endTime } from './schedule.js';
 import { minutesToTime } from '../../core/time/timeOfDay.js';
 import { t, formatRelativeDay, formatDuration } from '../../core/i18n/index.js';
@@ -45,14 +46,23 @@ export function habitItem(habit, today) {
   return { kind: 'habit', id: habit.id, title: habit.text, icon: habit.icon, done: Boolean(habit.history?.[today]) };
 }
 
+/** A routine occurrence's progress: 'Ikke startet', '2 af 5 trin' or 'Klaret'. */
+export function describeRoutineProgress(item) {
+  if (item.state === 'complete') return t('routine.complete');
+  if (item.state === 'notStarted') return t('routine.notStarted');
+  return t('routine.progress', { done: item.doneCount, total: item.stepCount });
+}
+
 /**
- * The quiet line under an item's title, e.g. 'I gang til 11:45' or
- * 'Fra i går · Vigtig'. (The time itself is item.timeLabel.) Plan lists
- * later tasks under their day, so it passes plannedDay: false.
+ * The quiet line under an item's title, e.g. 'I gang til 11:45',
+ * 'Fra i går · Vigtig' or 'Rutine · 2 af 5 trin'. (The time itself is
+ * item.timeLabel.) Plan lists later tasks under their day, so it passes
+ * plannedDay: false.
  */
 export function describeItem(item, today, { plannedDay = true } = {}) {
   const parts = [];
   if (item.kind === 'habit') parts.push(t('task.meta.habit'));
+  if (item.kind === 'routine') parts.push(t('routine.kind'), describeRoutineProgress(item));
   if (!item.done && item.status === 'active') parts.push(t('task.meta.activeUntil', { time: item.endTime }));
   if (!item.done && item.status === 'past' && item.date === today) parts.push(t('task.meta.timePassed'));
   if (item.carriedOver) parts.push(t('task.meta.carriedOver', { day: formatRelativeDay(item.date, today) }));

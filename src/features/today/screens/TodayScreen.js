@@ -22,6 +22,8 @@ import { useNow } from '../../../core/time/useNow';
 import { useJournal, useTickedThisVisit } from '../../tasks/store';
 import { useGoals } from '../../goals/store';
 import { useGroceries } from '../../groceries/store';
+import { useRoutines, useRoutineLog } from '../../routines/store';
+import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { describeItem } from '../../tasks/items';
 import { buildToday, describeGoal, greetingKey } from '../logic';
@@ -37,6 +39,9 @@ export default function TodayScreen({ userName }) {
   const journal = useJournal();
   const goals = useGoals();
   const groceries = useGroceries();
+  const routines = useRoutines();
+  const routineLog = useRoutineLog();
+  const { openChecklist, checklistElement } = useRoutineChecklist();
 
   const [now, sync] = useNow();
   const today = localDateKey(now);
@@ -45,11 +50,12 @@ export default function TodayScreen({ userName }) {
   // undone (same rule as Plan and Tidshjul).
   const [keepVisibleIds, tick] = useTickedThisVisit(sync);
   const day = useMemo(
-    () => buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds }),
-    [journal, goals, groceries, today, nowMinutes, keepVisibleIds],
+    () => buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds, routines, routineLog }),
+    [journal, goals, groceries, today, nowMinutes, keepVisibleIds, routines, routineLog],
   );
 
   const toggle = (item) => tick(item.id);
+  const openRoutine = (item) => openChecklist(item.routineId, item.date);
 
   const greeting = t(greetingKey(now.getHours()));
 
@@ -67,7 +73,7 @@ export default function TodayScreen({ userName }) {
       {/* NU / NÆSTE: selectFocus, the same rule Tidshjul shows. */}
       <FocusLabel text={t('today.now')} accent />
       {day.now ? (
-        <ItemRow item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} variant="now" />
+        <ItemRow item={day.now} meta={describeItem(day.now, today)} onToggle={toggle} onOpen={openRoutine} variant="now" />
       ) : (
         <Card style={styles.emptyNow}>
           <Text style={styles.emptyTitle}>{t(EMPTY_TEXT[day.state].title)}</Text>
@@ -84,7 +90,7 @@ export default function TodayScreen({ userName }) {
       {day.next ? (
         <>
           <FocusLabel text={t('today.next')} />
-          <ItemRow item={day.next} meta={describeItem(day.next, today)} onToggle={toggle} variant="next" />
+          <ItemRow item={day.next} meta={describeItem(day.next, today)} onToggle={toggle} onOpen={openRoutine} variant="next" />
         </>
       ) : null}
 
@@ -108,6 +114,14 @@ export default function TodayScreen({ userName }) {
         <Section title={t('today.habits')}>
           {day.habits.map(item => (
             <ItemRow key={item.id} item={item} onToggle={toggle} />
+          ))}
+        </Section>
+      ) : null}
+
+      {day.routines.length > 0 ? (
+        <Section title={t('today.routines')}>
+          {day.routines.map(item => (
+            <ItemRow key={item.id} item={item} meta={describeItem(item, today)} onOpen={openRoutine} />
           ))}
         </Section>
       ) : null}
@@ -136,6 +150,7 @@ export default function TodayScreen({ userName }) {
           />
         </View>
       ) : null}
+      {checklistElement}
     </ScrollView>
   );
 }

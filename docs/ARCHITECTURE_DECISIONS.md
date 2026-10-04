@@ -428,3 +428,53 @@ Plan), not under Mere.
   overlap in words, is in the timeline below it. Open tasks that have no
   place on the timeline (untimed, or carried over from earlier days) are
   listed under it, so whatever NU shows is also on the screen.
+
+---
+
+## ADR-008: Routines as templates with derived occurrences and a per-date log
+
+- **Status:** accepted (Session 9, 2026-10-04)
+
+### Context
+Routines (a morning or evening sequence of steps) are the second scheduled
+domain after tasks. They repeat on weekdays and their steps are ticked per
+day. Copying them into the task list every day would duplicate data,
+pollute Plan and need a background job.
+
+### Decision
+- **Two stored lists, nothing else** (`src/features/routines/store.js`,
+  both on `createPersistedListStore`, both empty by default):
+  - `routines`: templates `{ id, name, enabled, activeFrom, daysOfWeek
+    (ISO 1 = mandag … 7 = søndag), startTime?, durationMinutes?, steps:
+    [{ id, text }] }`. String ids (time + random). No step times.
+  - `routineLog`: `{ routineId, date, completedStepIds }`, one entry per
+    routine and local date, created on the first tick. Ticking never
+    changes the template.
+- **Occurrences are derived** for the date being shown
+  (`occurrencesOn` in `src/features/routines/model.js`): a routine occurs
+  when it is enabled, `date >= activeFrom` and the date's ISO weekday is in
+  `daysOfWeek`. Weekly recurrence only: no RRULE, intervals, exceptions or
+  libraries. Nothing is pre-generated; there is no scheduler.
+- **Shared schedule contract, not a universal event model.** An occurrence
+  carries the same `date` / `startTime` / `durationMinutes` fields as a
+  task, so `src/features/tasks/schedule.js` (status, ordering, overlaps)
+  works on both unchanged. `routineItem` adds the same presentation
+  fields as `taskItem` (endTime, timeLabel, status) plus `kind:
+  'routine'` and progress. NU/NÆSTE (`selectFocus`), I dag and Tidshjul
+  take routine items next to tasks; there is no preference by kind
+  (equal keys keep tasks first, as input order). With no routines every
+  output is exactly what it was (tests assert this).
+- **Interaction:** tapping a routine anywhere opens that day's checklist
+  (`useRoutineChecklist`); the template is edited only on the Rutiner
+  screen (route `routines`, secondary: Mere → Livet, plus links from Plan
+  and the checklist). No new tab.
+- **Deleting a routine keeps its log** (history is never removed
+  automatically); orphaned entries are simply not shown.
+
+### Known v1 limitations
+- Occurrences are projected from the CURRENT template. Editing a
+  routine's days, time or steps also changes how past dates are shown;
+  their log entries are kept, but only steps that still exist count, and a
+  paused routine disappears from every date. No template versioning yet.
+- A routine with no steps cannot be created; damaged data with no steps
+  shows as "Ikke startet" and never completes.

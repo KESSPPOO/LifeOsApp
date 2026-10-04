@@ -19,12 +19,12 @@ import {
 import { COLORS } from '../../../config/colors';
 import { GlassSheet } from '../../../components/GlassSheet';
 import { DatePicker } from '../../../components/DatePicker';
-import { t, formatDuration } from '../../../core/i18n';
+import { t } from '../../../core/i18n';
 import { addDays } from '../../../core/time/dates';
-import { parseTimeInput } from '../../../core/time/timeOfDay';
-import { DURATION_CHOICES, MAX_DURATION_MINUTES } from '../../tasks/schedule';
+import { MAX_DURATION_MINUTES } from '../../tasks/schedule';
 import { readTaskForm } from '../logic';
-import { Choice } from './Choice';
+import { ScheduleFields } from '../../tasks/components/ScheduleFields';
+import { Choice } from '../../../components/Choice';
 
 const PRIORITIES = ['low', 'medium', 'high'];
 
@@ -38,7 +38,6 @@ export function TaskSheet({ kind, editing, initial, focus, today, onSave, onDele
   const [error, setError] = useState(null);
   const set = (field) => (value) => { setForm(f => ({ ...f, [field]: value })); setError(null); };
 
-  const timeValid = parseTimeInput(form.timeText) !== null;
   const tomorrow = addDays(today, 1);
 
   const save = () => {
@@ -48,11 +47,6 @@ export function TaskSheet({ kind, editing, initial, focus, today, onSave, onDele
   };
 
   const clearTime = () => setForm(f => ({ ...f, timeText: '', durationChoice: null, customDuration: '' }));
-  // Show the canonical form ('9' -> '09:00') once the user leaves the field.
-  const normaliseTime = () => {
-    const parsed = parseTimeInput(form.timeText);
-    if (parsed) setForm(f => ({ ...f, timeText: parsed }));
-  };
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
@@ -116,72 +110,11 @@ export function TaskSheet({ kind, editing, initial, focus, today, onSave, onDele
                 />
 
                 {form.date ? (
-                  <>
-                    <FieldLabel text={t('taskForm.time')} />
-                    <View style={styles.row}>
-                      <TextInput
-                        style={[styles.input, styles.grow, styles.timeInput]}
-                        placeholder={t('taskForm.timePlaceholder')}
-                        placeholderTextColor={COLORS.textMuted}
-                        value={form.timeText}
-                        onChangeText={set('timeText')}
-                        onEndEditing={normaliseTime}
-                        keyboardType="numbers-and-punctuation"
-                        maxLength={5}
-                        autoFocus={focus === 'time'}
-                        accessibilityLabel={t('taskForm.time')}
-                        accessibilityHint={t('taskForm.timePlaceholder')}
-                      />
-                      {form.timeText ? (
-                        <TouchableOpacity
-                          onPress={clearTime}
-                          style={styles.clearBtn}
-                          accessibilityRole="button"
-                          accessibilityLabel={t('taskForm.noTime')}
-                        >
-                          <Text style={styles.clearText}>{t('taskForm.noTime')}</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-
-                    {timeValid ? (
-                      <>
-                        <FieldLabel text={t('taskForm.duration')} />
-                        <View style={styles.choices}>
-                          <Choice
-                            label={t('taskForm.durationUnknown')}
-                            selected={form.durationChoice === null}
-                            onPress={() => set('durationChoice')(null)}
-                          />
-                          {DURATION_CHOICES.map(m => (
-                            <Choice
-                              key={m}
-                              label={formatDuration(m)}
-                              selected={form.durationChoice === m}
-                              onPress={() => set('durationChoice')(m)}
-                            />
-                          ))}
-                          <Choice
-                            label={t('taskForm.durationCustom')}
-                            selected={form.durationChoice === 'custom'}
-                            onPress={() => set('durationChoice')('custom')}
-                          />
-                        </View>
-                        {form.durationChoice === 'custom' ? (
-                          <TextInput
-                            style={[styles.input, styles.minutesInput]}
-                            placeholder={t('taskForm.durationMinutes')}
-                            placeholderTextColor={COLORS.textMuted}
-                            value={form.customDuration}
-                            onChangeText={set('customDuration')}
-                            keyboardType="number-pad"
-                            maxLength={4}
-                            accessibilityLabel={`${t('taskForm.duration')}, ${t('taskForm.durationMinutes')}`}
-                          />
-                        ) : null}
-                      </>
-                    ) : null}
-                  </>
+                  <ScheduleFields
+                    form={form}
+                    onChange={(patch) => { setForm(f => ({ ...f, ...patch })); setError(null); }}
+                    autoFocusTime={focus === 'time'}
+                  />
                 ) : null}
 
                 <FieldLabel text={t('taskForm.priority')} />
@@ -243,15 +176,11 @@ const styles = StyleSheet.create({
     color: COLORS.text, fontSize: 16, marginBottom: 12,
   },
   iconInput:    { width: 64, marginRight: 10, textAlign: 'center' },
-  timeInput:    { fontVariant: ['tabular-nums'] },
-  minutesInput: { width: 140 },
 
   fieldLabel: { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8, marginTop: 4 },
 
   choices: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
 
-  clearBtn:  { minHeight: 48, justifyContent: 'center', paddingHorizontal: 12, marginLeft: 6, marginBottom: 12 },
-  clearText: { fontSize: 15, color: COLORS.text, textDecorationLine: 'underline' },
 
   error: { fontSize: 15, color: COLORS.text, backgroundColor: COLORS.redDim, borderRadius: 10, padding: 12, marginBottom: 12 },
 

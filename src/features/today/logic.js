@@ -20,6 +20,7 @@
 import { compareDateStart, isTimed } from '../tasks/schedule.js';
 import { taskItem, dayProgress } from '../tasks/items.js';
 import { selectFocus } from '../tasks/focus.js';
+import { occurrencesOn, routineItem } from '../routines/model.js';
 import { addDays, isDateKey } from '../../core/time/dates.js';
 import { t, formatRelativeDay } from '../../core/i18n/index.js';
 
@@ -57,16 +58,21 @@ export function goalsNeedingAttention(goals, today) {
  *
  * nowMinutes: minutes since today's midnight.
  *
- * Returns { now, next, rest, restMore, habits, goals, shoppingCount,
- * done, total, state } where state is 'active' (there is a NU), 'free'
+ * routines / routineLog: the routine templates and completion log (default
+ * none); today's occurrences take part in NU/NÆSTE, and the others are
+ * listed in `routines` (I dag's RUTINER section).
+ *
+ * Returns { now, next, rest, restMore, habits, routines, goals,
+ * shoppingCount, done, total, state } where state is 'active' (there is a NU), 'free'
  * (nothing to do now, but a timed task later today), 'allDone' (everything
  * for today is ticked) or 'empty' (nothing today).
  * done/total: dayProgress (tasks dated today plus habits; the same numbers
  * Plan shows).
  */
-export function buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds }) {
+export function buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds, routines = [], routineLog = [] }) {
+  const routineItems = occurrencesOn(routines, routineLog, today).map(o => routineItem(o, today, nowMinutes));
   const { now, next, groups, active, upcomingTimed, flexible, dueDone, habits } =
-    selectFocus({ journal, today, nowMinutes, keepVisibleIds });
+    selectFocus({ journal, today, nowMinutes, keepVisibleIds, routineItems });
   // (Parameters are named `task`, not `t`, which is the i18n lookup here.)
   const item = (task) => taskItem(task, today, nowMinutes);
   const habitsDone = habits.filter(h => h.done).length;
@@ -88,13 +94,14 @@ export function buildToday({ journal, goals, groceries, today, nowMinutes, keepV
     rest,
     restMore: Math.max(0, untimedRest.length - REST_LIMIT),
     habits: habits.filter(notFeatured),
+    routines: routineItems.filter(notFeatured),
     goals: goalsNeedingAttention(goals, today).slice(0, GOALS_LIMIT),
     shoppingCount: groceries.filter(g => !g.done).length,
     done: progress.done,
     total: progress.total,
     state: now ? 'active'
-      : upcomingTimed.length > 0 ? 'free'
-        : dueDone.length + habitsDone > 0 ? 'allDone' : 'empty',
+      : next?.status === 'upcoming' && next.date === today ? 'free'
+        : dueDone.length + habitsDone + routineItems.filter(r => r.done).length > 0 ? 'allDone' : 'empty',
   };
 }
 

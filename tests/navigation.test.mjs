@@ -18,9 +18,9 @@ const ROUTES = NAV.map(n => n.id);
 
 const LEGACY_ROUTES = ['home', 'uni', 'journal', 'finances', 'stats', 'groceries', 'goals', 'notes', 'links'];
 
-test('every pre-ADR-005 route id still exists (no renames); only today, timewheel and more are new', () => {
+test('every pre-ADR-005 route id still exists (no renames); today, timewheel, more and routines are new', () => {
   for (const id of LEGACY_ROUTES) assert.ok(ROUTES.includes(id), id);
-  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'more']);
+  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'more', 'routines']);
   assert.equal(new Set(ROUTES).size, ROUTES.length, 'unique');
 });
 
@@ -121,6 +121,16 @@ test('Back walks every switch, duplicates included (same as the old manual histo
   ['journal', 'today', 'journal', 'notes'].forEach(r => nav.navigate(r));
   assert.deepEqual([nav.back(), nav.back(), nav.back(), nav.back(), nav.back()],
     ['journal', 'today', 'journal', 'today', 'EXIT']);
+});
+
+test('Rutiner is secondary: on Mere under Livet (not a tab, not legacy), and Back returns from it', () => {
+  assert.equal(tabFor('routines'), 'more');
+  assert.deepEqual(MORE_SECTIONS.find(s => s.id === 'life').items[0].id, 'routines');
+  assert.equal(TAB_ITEMS.length, 4, 'no new tab');
+  const nav = createNav();
+  nav.navigate('journal');
+  nav.navigate('routines');
+  assert.deepEqual([nav.back(), nav.back(), nav.back()], ['journal', 'today', 'EXIT']);
 });
 
 test('Tidshjul is a tab: reachable directly, and Back returns from it', () => {

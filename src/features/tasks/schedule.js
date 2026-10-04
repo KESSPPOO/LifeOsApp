@@ -2,13 +2,18 @@
 //
 // Optional scheduling on one-off tasks. Pure; no React; "now" is passed in.
 //
+// The helpers below read only `date`, `startTime`, `durationMinutes` (and
+// `recurring`), so they work for anything shaped like that: a stored task,
+// or a routine occurrence (src/features/routines/model.js). That small
+// shape is the shared contract of everything that can be on the timeline.
+//
 // Stored fields (both optional, added only when the user sets a time):
 //   startTime        'HH:mm' local wall-clock time on the task's `date`
 //   durationMinutes  whole minutes, 1 … MAX_DURATION_MINUTES
 // Missing, null or invalid values mean "no time" / "duration unknown"; they
 // are never repaired or rewritten on load. The end time is derived, never
 // stored. Habits (recurring) and undated tasks are never timed.
-import { isTimeOfDay, timeToMinutes, minutesToTime, MINUTES_PER_DAY } from '../../core/time/timeOfDay.js';
+import { isTimeOfDay, timeToMinutes, minutesToTime, parseTimeInput, MINUTES_PER_DAY } from '../../core/time/timeOfDay.js';
 import { isDateKey, daysBetween } from '../../core/time/dates.js';
 
 export const MAX_DURATION_MINUTES = MINUTES_PER_DAY;
@@ -143,3 +148,38 @@ export function findOverlaps(intervals) {
   if (group.length > 1) groups.push(group);
   return { pairs, groups };
 }
+
+// ── Time and duration in forms (task sheet, routine sheet) ──────────────
+// Form values: { timeText, durationChoice, customDuration }. durationChoice
+// is null (unknown), one of DURATION_CHOICES, or 'custom' (customDuration
+// holds the typed minutes).
+
+/** Form values for a stored startTime / durationMinutes (invalid -> empty). */
+export function scheduleFormValues(startTime, durationMinutes) {
+  const time = isTimeOfDay(startTime) ? startTime : '';
+  const duration = time && isValidDuration(durationMinutes) ? durationMinutes : null;
+  const preset = DURATION_CHOICES.includes(duration);
+  return {
+    timeText: time,
+    durationChoice: duration === null ? null : preset ? duration : 'custom',
+    customDuration: duration !== null && !preset ? String(duration) : '',
+  };
+}
+
+/**
+ * Reads those form values: { startTime, durationMinutes } (each null when
+ * not given) or { error } with the i18n key to show. A duration is only
+ * read when there is a time.
+ */
+export function readScheduleInput({ timeText, durationChoice, customDuration }) {
+  if (!timeText.trim()) return { startTime: null, durationMinutes: null };
+  const startTime = parseTimeInput(timeText);
+  if (!startTime) return { error: 'taskForm.timeInvalid' };
+  if (durationChoice === 'custom') {
+    const minutes = Number(customDuration.trim());
+    if (!customDuration.trim() || !isValidDuration(minutes)) return { error: 'taskForm.durationInvalid' };
+    return { startTime, durationMinutes: minutes };
+  }
+  return { startTime, durationMinutes: isValidDuration(durationChoice) ? durationChoice : null };
+}
+

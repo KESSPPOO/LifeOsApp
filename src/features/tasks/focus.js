@@ -5,6 +5,14 @@
 // and time ("now") are passed in; nothing is read from the clock and
 // nothing is written.
 //
+// Two kinds of day items take part: tasks, and today's routine occurrences
+// (routineItems, built by src/features/routines/model.js). Both have date /
+// startTime / durationMinutes, so the same schedule rules sort them; a
+// routine has no priority, so it ranks like a medium task. There is no
+// preference by kind: equal keys keep tasks before routines (input order).
+// Finished occurrences never take part. With no routines the result is
+// exactly the task-only result.
+//
 // The unfinished tasks dated today or earlier ("due") are split by their
 // schedule at `now` (./schedule.js):
 //   active    a timed task with a duration whose interval contains now
@@ -15,11 +23,11 @@
 // as medium), then date (oldest first), then time (a timed task whose time
 // has come before the untimed ones of its day), then the user's own order.
 //
-//   1. The queue is: active tasks (earliest start first), then the ranked
-//      flexible tasks, then today's unticked habits in list order.
+//   1. The queue is: active items (earliest start first), then the ranked
+//      flexible items, then today's unticked habits in list order.
 //   2. NU = the first in the queue. Upcoming timed tasks are never NU: their
 //      time has not come.
-//   3. NÆSTE = the earliest upcoming timed task today; otherwise the next in
+//   3. NÆSTE = the earliest upcoming timed item today; otherwise the next in
 //      the queue; otherwise the earliest unfinished task on a later day.
 import { groupJournal } from '../../data/tasks.js';
 import { scheduleStatus, compareStart, compareDateStart } from './schedule.js';
@@ -35,16 +43,18 @@ export function rankDueTasks(tasks) {
 
 /**
  * journal: tasks + habits; today: 'YYYY-MM-DD'; nowMinutes: minutes since
- * today's midnight; keepVisibleIds: see groupJournal.
+ * today's midnight; keepVisibleIds: see groupJournal; routineItems: today's
+ * routine occurrences as items (default none).
  *
- * Returns { now, next } (items from ./items.js, or null) plus the parts
- * I dag builds its overview from: groups (groupJournal), active,
- * upcomingTimed and flexible (unfinished due tasks, each in NU order),
- * dueDone (finished due tasks) and habits (habit items).
+ * Returns { now, next } (items, or null) plus the parts I dag builds its
+ * overview from: groups (groupJournal), active, upcomingTimed and flexible
+ * (unfinished due TASKS, each in NU order), dueDone (finished due tasks)
+ * and habits (habit items).
  */
-export function selectFocus({ journal, today, nowMinutes, keepVisibleIds }) {
+export function selectFocus({ journal, today, nowMinutes, keepVisibleIds, routineItems = [] }) {
   const groups = groupJournal(journal, today, keepVisibleIds);
-  const item = (task) => taskItem(task, today, nowMinutes);
+  // Routine items are items already; tasks become items here.
+  const item = (entry) => (entry.kind === 'routine' ? entry : taskItem(entry, today, nowMinutes));
   const due = [...groups.Overdue, ...groups.Today];
   const dueDone = due.filter(task => task.done);
   const active = [];
@@ -61,9 +71,15 @@ export function selectFocus({ journal, today, nowMinutes, keepVisibleIds }) {
   const habits = groups.Habits.map(h => habitItem(h, today));
   const laterDay = groups.Upcoming.filter(task => !task.done).sort(compareDateStart)[0];
 
-  const queue = [...active.map(item), ...flexible.map(item), ...habits.filter(h => !h.done)];
+  const openRoutines = routineItems.filter(routine => !routine.done);
+  const ofStatus = (status) => openRoutines.filter(routine => routine.status === status);
+  const allActive = [...active, ...ofStatus('active')].sort(compareDateStart);
+  const allUpcoming = [...upcomingTimed, ...ofStatus('upcoming')].sort(compareStart);
+  const allFlexible = rankDueTasks([...flexibleOpen, ...ofStatus('untimed'), ...ofStatus('past')]);
+
+  const queue = [...allActive.map(item), ...allFlexible.map(item), ...habits.filter(h => !h.done)];
   const now = queue[0] ?? null;
-  const next = (upcomingTimed[0] && item(upcomingTimed[0])) ?? queue[1] ?? (laterDay ? item(laterDay) : null);
+  const next = (allUpcoming[0] && item(allUpcoming[0])) ?? queue[1] ?? (laterDay ? item(laterDay) : null);
 
   return { now, next, groups, active, upcomingTimed, flexible, dueDone, habits };
 }
