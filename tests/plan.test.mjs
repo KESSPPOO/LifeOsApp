@@ -7,6 +7,7 @@ import {
   formFromEntry, readTaskForm,
 } from '../src/features/plan/logic.js';
 import { toggleJournalEntry } from '../src/data/tasks.js';
+import { buildToday } from '../src/features/today/logic.js';
 
 const TODAY = '2026-10-03';
 const task = (id, date, extra = {}) =>
@@ -75,6 +76,16 @@ test('undated tasks and habits keep the user\'s order', () => {
   assert.deepEqual(ids(plan.habits), [101, 102]);
 });
 
+test('regression: Plan and I dag show the same "X af Y klaret i dag"', () => {
+  const journal = [
+    task(1, TODAY, { done: true }), task(2, TODAY), task(3, '2026-10-01'),
+    { ...habit(101), history: { [TODAY]: 1 } }, habit(102), habit(103),
+  ];
+  const fromToday = buildToday({ journal, goals: [], groceries: [], today: TODAY, nowMinutes: 600 });
+  assert.deepEqual(groupPlan(journal, TODAY).progress, { done: 2, total: 5 });
+  assert.deepEqual([fromToday.done, fromToday.total], [2, 5]);
+});
+
 test('grouping is deterministic and does not modify the stored list', () => {
   const journal = [task(1, TODAY, { startTime: '10:00' }), task(2, '2026-10-01'), task(3, '2026-10-09'), habit(101)];
   const snapshot = JSON.stringify(journal);
@@ -113,6 +124,23 @@ test('updateTask changes only that task, and removing the time removes both fiel
   const timed = updateTask(list, 2, fields({ startTime: '08:00' }));
   assert.equal(timed[1].startTime, '08:00');
   assert.ok(!('durationMinutes' in timed[1]));
+});
+
+test('regression: editing only the title keeps stored schedule values exactly, even ones not understood', () => {
+  const odd = task(1, TODAY, { startTime: '9:00', durationMinutes: '30' });
+  const form = formFromEntry(odd);
+  const { fields: edited } = readTaskForm('task', { ...form, text: 'Nyt navn' });
+  const [saved] = updateTask([odd], 1, edited);
+  assert.deepEqual(saved, { ...odd, text: 'Nyt navn' });
+  // A valid schedule is kept the same way.
+  const ok = task(2, TODAY, { startTime: '10:45', durationMinutes: 60 });
+  const [kept] = updateTask([ok], 2, readTaskForm('task', { ...formFromEntry(ok), text: 'Tandlæge' }).fields);
+  assert.deepEqual(kept, { ...ok, text: 'Tandlæge' });
+  // Changing the time, or removing the date, does replace it.
+  const [changed] = updateTask([odd], 1, { ...edited, startTime: '10:00' });
+  assert.deepEqual([changed.startTime, 'durationMinutes' in changed], ['10:00', false]);
+  const [undated] = updateTask([ok], 2, { ...edited, date: null, startTime: '10:45', durationMinutes: 60 });
+  assert.ok(!('startTime' in undated) && !('durationMinutes' in undated));
 });
 
 test('habits: created with the existing shape; editing keeps history and streak', () => {

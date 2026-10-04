@@ -52,6 +52,13 @@ test('new UI files: no text below 12 pt, no textSub', () => {
   }
 });
 
+test('radio chips announce their checked state', () => {
+  for (const rel of NEW_UI) {
+    const src = readFileSync(rel, 'utf8');
+    if (src.includes('accessibilityRole="radio"')) assert.match(src, /accessibilityState=\{\{ checked:/, rel);
+  }
+});
+
 test('interactive elements in the new UI declare a role', () => {
   for (const rel of NEW_UI) {
     const src = readFileSync(rel, 'utf8');

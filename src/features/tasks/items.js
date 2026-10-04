@@ -60,3 +60,17 @@ export function describeItem(item, today, { plannedDay = true } = {}) {
   if (item.important) parts.push(t('task.meta.important'));
   return parts.join(' · ');
 }
+
+/**
+ * "X af Y klaret i dag", the same on I dag and Plan: the tasks dated today
+ * plus all habits (ticked today). Carried-over tasks are not counted: when
+ * they were finished is not stored, so counting them would change the
+ * numbers between visits. `groups` is groupJournal()'s result.
+ */
+export function dayProgress(groups, today) {
+  return {
+    done: groups.Today.filter(task => task.done).length + groups.Habits.filter(h => h.history?.[today]).length,
+    total: groups.Today.length + groups.Habits.length,
+  };
+}
+

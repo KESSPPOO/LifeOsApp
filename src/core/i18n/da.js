@@ -86,7 +86,7 @@ export const da = {
   'plan.habits':      'Vaner',
   'plan.addHabit':    'Ny vane',
   'plan.empty':       'Ingen opgaver endnu. Skriv en herunder, når du er klar.',
-  'plan.reorderHint': 'Hold og træk for at ændre rækkefølgen',
+  'plan.reorderHint': 'Hold og træk for at flytte opgaver uden tidspunkt, opgaver uden dato og vaner.',
   'plan.openHint':    'Åbner for at redigere',
   'plan.streak':      { one: '{count} dag i træk', other: '{count} dage i træk' },
   'plan.week':        '{count} af de sidste 7 dage',

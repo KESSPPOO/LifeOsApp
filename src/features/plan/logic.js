@@ -15,6 +15,7 @@
 //                  unfinished first, timed before untimed in time order
 //   noDate         tasks without a date (user's order, finished last)
 //   habits         recurring habits (user's order)
+//   progress       { done, total } for "X af Y klaret i dag" (as on I dag)
 //
 // Sorting is stable everywhere: equal keys keep the stored order.
 import { groupJournal } from '../../data/tasks.js';
@@ -22,6 +23,7 @@ import {
   isTimed, compareStart, compareDateStart, withSchedule, getSchedule, isValidDuration, DURATION_CHOICES,
 } from '../tasks/schedule.js';
 import { parseTimeInput } from '../../core/time/timeOfDay.js';
+import { dayProgress } from '../tasks/items.js';
 
 const doneLast = (a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0);
 
@@ -47,6 +49,7 @@ export function groupPlan(journal, today, keepVisibleIds) {
     upcomingDays,
     noDate: groups['No Date'],
     habits: groups.Habits,
+    progress: dayProgress(groups, today),
   };
 }
 
@@ -63,7 +66,15 @@ const nextId = (list) => Math.max(0, ...list.map(x => Number(x.id) || 0)) + 1;
  * saved without a time has no schedule keys.
  */
 function taskFields(base, { text, subject, priority, date, startTime, durationMinutes }) {
-  return withSchedule({ ...base, text, subject, priority, date: date || null }, { startTime, durationMinutes });
+  const next = { ...base, text, subject, priority, date: date || null };
+  // Time fields the user did not change are left exactly as stored (even a
+  // value this version does not understand), so editing only the title
+  // never rewrites or drops schedule data.
+  const stored = getSchedule(base);
+  const unchanged = next.date === base.date
+    && (startTime ?? null) === (stored ? base.startTime : null)
+    && (durationMinutes ?? null) === (stored?.duration ?? null);
+  return unchanged ? next : withSchedule(next, { startTime, durationMinutes });
 }
 
 export function addTask(list, fields) {

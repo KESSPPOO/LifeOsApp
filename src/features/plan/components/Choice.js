@@ -13,7 +13,7 @@ export function Choice({ label, selected, onPress }) {
       onPress={onPress}
       style={[styles.choice, selected && styles.selected]}
       accessibilityRole="radio"
-      accessibilityState={{ selected: Boolean(selected) }}
+      accessibilityState={{ checked: Boolean(selected), selected: Boolean(selected) }}
       accessibilityLabel={label}
     >
       <Text style={[styles.text, selected && styles.textSelected]}>{selected ? `✓ ${label}` : label}</Text>

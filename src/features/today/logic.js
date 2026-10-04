@@ -11,7 +11,8 @@
 //   flexible  everything else: untimed tasks, carried-over tasks, and timed
 //             tasks whose time has passed (still open, never hidden)
 // Flexible tasks are ranked by priority (high, medium, low; missing counts
-// as medium), then date (oldest first), then the user's own list order.
+// as medium), then date (oldest first), then time (a timed task whose time
+// has come before the untimed ones of its day), then the user's own order.
 //
 // NU / NÆSTE (deterministic):
 //   1. The queue is: active tasks (earliest start first), then the ranked
@@ -21,9 +22,10 @@
 //   3. NÆSTE = the earliest upcoming timed task today; otherwise the next in
 //      the queue; otherwise the earliest unfinished task on a later day.
 //   4. Nothing is shown twice: items in NU/NÆSTE are left out of the
-//      overview below them. The overview lists up to REST_LIMIT more open
-//      tasks (active, then upcoming in time order, then flexible), then
-//      every finished one (dimmed, so a tap can be undone).
+//      overview below them. The overview lists every open timed task in
+//      time order (a day's appointments are never cut), then up to
+//      REST_LIMIT open untimed tasks in NU order, then every finished one
+//      (dimmed, so a tap can be undone).
 //
 // Timewheel boundary: NU/NÆSTE take items of one shape ({ kind, id,
 // title, startTime, durationMinutes, status, … }). The Timewheel and
@@ -31,8 +33,8 @@
 // screen does not change for that. No such items exist yet, and none are
 // invented here.
 import { groupJournal } from '../../data/tasks.js';
-import { scheduleStatus, compareStart, compareDateStart } from '../tasks/schedule.js';
-import { taskItem, habitItem } from '../tasks/items.js';
+import { scheduleStatus, compareStart, compareDateStart, isTimed } from '../tasks/schedule.js';
+import { taskItem, habitItem, dayProgress } from '../tasks/items.js';
 import { addDays, isDateKey } from '../../core/time/dates.js';
 import { t, formatRelativeDay } from '../../core/i18n/index.js';
 
@@ -47,8 +49,7 @@ const priorityRank = (p) => PRIORITY_RANK[p] ?? PRIORITY_RANK.medium;
 
 /** Unfinished due tasks in NU order (Array.prototype.sort is stable). */
 export function rankDueTasks(tasks) {
-  return [...tasks].sort((a, b) =>
-    priorityRank(a.priority) - priorityRank(b.priority) || a.date.localeCompare(b.date));
+  return [...tasks].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || compareDateStart(a, b));
 }
 
 /**
@@ -83,9 +84,8 @@ export function goalsNeedingAttention(goals, today) {
  * done, total, state } where state is 'active' (there is a NU), 'free'
  * (nothing to do now, but a timed task later today), 'allDone' (everything
  * for today is ticked) or 'empty' (nothing today).
- * done/total is the progress of today's own plan: tasks dated today plus
- * habits. Carried-over tasks are not counted (when they were finished is
- * not stored), so the numbers do not change between visits.
+ * done/total: dayProgress (tasks dated today plus habits; the same numbers
+ * Plan shows).
  */
 export function buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds }) {
   const groups = groupJournal(journal, today, keepVisibleIds);
@@ -114,21 +114,25 @@ export function buildToday({ journal, goals, groceries, today, nowMinutes, keepV
   const featured = new Set([now, next].filter(Boolean).map(i => i.id));
   const notFeatured = (task) => !featured.has(task.id);
 
-  // Open tasks are capped; finished ones always stay listed, so a task
-  // ticked in NU/NÆSTE is never pushed out of sight before it can be undone.
-  const restOpen = [...active, ...upcomingTimed, ...flexible].filter(notFeatured);
-  const rest = [...restOpen.slice(0, REST_LIMIT), ...dueDone.filter(notFeatured)].map(item);
+  // Timed tasks are all listed, in time order; only untimed ones are
+  // capped. Finished ones always stay listed, so a task ticked in NU/NÆSTE
+  // is never pushed out of sight before it can be undone.
+  const timedRest = [...active, ...upcomingTimed, ...flexible.filter(isTimed)]
+    .filter(notFeatured).sort(compareDateStart);
+  const untimedRest = flexible.filter(task => !isTimed(task) && notFeatured(task));
+  const rest = [...timedRest, ...untimedRest.slice(0, REST_LIMIT), ...dueDone.filter(notFeatured)].map(item);
+  const progress = dayProgress(groups, today);
 
   return {
     now,
     next,
     rest,
-    restMore: Math.max(0, restOpen.length - REST_LIMIT),
+    restMore: Math.max(0, untimedRest.length - REST_LIMIT),
     habits: habits.filter(notFeatured),
     goals: goalsNeedingAttention(goals, today).slice(0, GOALS_LIMIT),
     shoppingCount: groceries.filter(g => !g.done).length,
-    done: groups.Today.filter(task => task.done).length + habitsDone,
-    total: groups.Today.length + habits.length,
+    done: progress.done,
+    total: progress.total,
     state: now ? 'active'
       : upcomingTimed.length > 0 ? 'free'
         : dueDone.length + habitsDone > 0 ? 'allDone' : 'empty',

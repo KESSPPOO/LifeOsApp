@@ -148,15 +148,14 @@ export default function PlanScreen() {
   );
 
   const todayTasks = [...plan.timedToday, ...plan.flexibleToday];
-  const todayDone = todayTasks.filter(task => task.done).length;
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
         <View style={styles.header}>
           <Text style={styles.date} accessibilityRole="header">{formatDateLong(today)}</Text>
-          {todayTasks.length > 0 ? (
-            <Text style={styles.subline}>{t('task.progress', { done: todayDone, total: todayTasks.length })}</Text>
+          {plan.progress.total > 0 ? (
+            <Text style={styles.subline}>{t('task.progress', plan.progress)}</Text>
           ) : null}
         </View>
 

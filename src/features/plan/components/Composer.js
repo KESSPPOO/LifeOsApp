@@ -1,8 +1,9 @@
 // src/features/plan/components/Composer.js
 //
 // Plan's always-visible quick add: type and send to add a task for I dag,
-// I morgen or without a date; "Tidspunkt og mere" opens the full sheet with
-// what was typed. Keeps its own text, so typing does not re-render the list
+// I morgen or without a date (the choice goes back to I dag after each
+// add, as before); "Tidspunkt og mere" opens the full sheet with what was
+// typed. Keeps its own text, so typing does not re-render the list
 // above it.
 import React, { useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Platform, StyleSheet } from 'react-native';
@@ -34,6 +35,7 @@ export function Composer({ currentDay, onAdd, onDetails }) {
     if (!trimmed) return;
     onAdd(trimmed, date());
     setText('');
+    setDay(DAYS[0]);
     inputRef.current?.focus();
   };
 
@@ -65,7 +67,7 @@ export function Composer({ currentDay, onAdd, onDetails }) {
           <Choice key={d.label} label={t(d.label)} selected={day === d} onPress={() => setDay(d)} />
         ))}
         <TouchableOpacity
-          onPress={() => onDetails(text, date(), () => setText(''))}
+          onPress={() => onDetails(text, date(), () => { setText(''); setDay(DAYS[0]); })}
           style={styles.detailsBtn}
           accessibilityRole="button"
         >

@@ -201,6 +201,32 @@ test('NÆSTE on a later day shows its time', () => {
   assert.equal(describeItem(d.next, TODAY), 'Planlagt til mandag');
 });
 
+test('regression: a point-in-time task stays on I dag after its start, even with many older tasks', () => {
+  const older = Array.from({ length: 8 }, (_, i) => task(i + 10, '2026-10-01', 'high'));
+  const d = day([...older, timed(1, '10:00')], { nowMinutes: at('10:00') });
+  const shown = [d.now, d.next, ...d.rest].filter(Boolean).map(i => i.id);
+  assert.ok(shown.includes(1), 'the appointment is visible');
+  assert.equal(d.rest.find(i => i.id === 1).status, 'past');
+});
+
+test('regression: later timed tasks do not push open overdue tasks out of the overview', () => {
+  const journal = [
+    ...Array.from({ length: 6 }, (_, i) => timed(i + 1, `${String(13 + i).padStart(2, '0')}:00`, 30)),
+    task(20, '2026-10-01', 'high'), task(21, '2026-10-02', 'high'), task(22, TODAY, 'low'),
+  ];
+  const d = day(journal, { nowMinutes: at('12:00') });
+  assert.equal(d.now.id, 20);
+  assert.equal(d.next.id, 1);
+  // Timed ones in time order, then the untimed ones (capped separately).
+  assert.deepEqual(ids(d.rest), [2, 3, 4, 5, 6, 21, 22]);
+  assert.equal(d.restMore, 0);
+});
+
+test('ranking: within equal priority and day, a timed task whose time has come leads', () => {
+  const ranked = rankDueTasks([task(1, TODAY), timed(2, '15:00'), timed(3, '09:00'), task(4, '2026-10-02')]);
+  assert.deepEqual(ids(ranked), [4, 3, 2, 1]);
+});
+
 test('scheduling logic does not modify its inputs', () => {
   const journal = [timed(1, '10:45', 60), timed(2, '15:00'), task(3, TODAY)];
   const snapshot = JSON.stringify(journal);
