@@ -483,3 +483,71 @@ pollute Plan and need a background job.
   paused routine disappears from every date. No template versioning yet.
 - A routine with no steps cannot be created; damaged data with no steps
   shows as "Ikke startet" and never completes.
+
+## ADR-009: Kalender as a view over one shared per-date schedule
+
+- **Status:** accepted (Session 10, 2026-10-04)
+
+### Context
+The user needs to see what a day, and a week, looks like: tasks with
+times, routines, what is untimed, where things collide. Tidshjul already
+combines tasks and routine occurrences for one date, inside its own model.
+A calendar that copied tasks into "events", or kept its own store, would
+drift from Plan and Tidshjul and need syncing.
+
+### Decision
+- **One shared query, no event model.** `getScheduleForDate({ journal,
+  routines, routineLog, date, today, nowMinutes })` in
+  `src/features/schedule/day.js` returns `{ items, conflicts, untimed }`
+  for one date: timed tasks and routine occurrences (with the part after
+  midnight of those from the day before), lanes and overlaps through the
+  existing `findOverlaps`, and the date's untimed tasks and routines. It is
+  Tidshjul's former `dayItems` / `placeItems`, moved, not rewritten; Tidshjul
+  (`buildDay`) now calls it, and a randomized differential check against
+  the old code plus regression tests show identical output for Tidshjul
+  and I dag. The per-item words (`timeRange`, `itemDetails`,
+  `overlapText`, `describeScheduledItem`), `clockFor` and the
+  `ConflictPanel` moved with it, so the two views say and show the same.
+  Tasks and routines do not import it; it imports them. No Event class,
+  no providers, no adapters.
+- **Kalender persists nothing.** Route `calendar` ("Kalender"), on Mere →
+  Livet and linked from Plan; no new tab (I dag · Tidshjul · Plan · Mere
+  stay). No store, no storage key, no generated or cached days: a day is
+  derived when shown, a week is its seven dates (`weekDates`, Monday
+  first; ISO week numbers).
+- **Two modes, one selected date.** Uge (default: Tidshjul already
+  answers "my day", the week is what no other screen shows, and Uge still
+  lists the selected day, today, below it) and Dag. The date lives in a
+  reducer (`calendarReducer`) only while the screen is open; `null` means
+  "follow today". ‹ › step a day in Dag and a week in Uge. No month view.
+- **Dag** draws the timed items on a vertical axis at their true times
+  (72 pt per hour) within a window: the waking day (08–20), widened to the
+  items and now with an hour's margin, never past 00–24. A block is as tall
+  as its duration but at least 44 pt; blocks that would then cover each
+  other sit side by side (that is layout, not a conflict). A point in time
+  stays a line, never gets a length. Untimed tasks and routines are listed
+  apart ("Uden tidspunkt"). The NU line only on today, from `useNow`.
+- **Uge** shows seven rows with a thin track per day: bars at real minutes
+  on one window for the whole week, points as ticks, overlapping items on
+  separate lines, and the day's count and conflicts in words. No titles;
+  tapping a day lists its items below ("Vis dagen" opens Dag). The week
+  model takes no "now", so it never rebuilds on the clock.
+- **Opening is delegated.** A task opens the Plan task sheet
+  (`useEntryEditor`; "Flyt" at its time field), a routine its day's
+  checklist; "Flyt" on a routine opens its template on Rutiner, whose
+  editor now says that a change applies on every day. "Ny opgave" opens the
+  same task sheet with the selected date. No drag-and-drop, no
+  auto-reschedule, no per-occurrence routine times or exceptions.
+- Finished items stay, subdued. Conflicts are Tidshjul's exactly (tests
+  compare the two).
+
+### Known limitations
+- **Routines on past dates are projections** of the routine as it is now
+  (ADR-008): a changed time, days or steps also changes how earlier days
+  look. Kalender does not pretend otherwise: a past day or week with
+  routines carries the quiet note "Rutiner på tidligere dage vises, som
+  rutinen er sat op nu." Versioned templates are future work.
+- A task is shown on its own date only; open tasks carried over from
+  earlier days are on I dag and Plan, not on today's calendar page.
+- Blocks are at least 44 pt, so a very short item looks longer than it is;
+  its start is still exact and its words say the real times.

@@ -15,7 +15,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../../config/colors';
 import { t, formatDuration } from '../../../core/i18n';
 import { minutesToTime } from '../../../core/time/timeOfDay';
-import { blockHeight, timeRange, itemDetails, overlapText, describeTimelineItem } from '../logic';
+import { timeRange, itemDetails, overlapText, describeScheduledItem } from '../../schedule/day';
+import { blockHeight } from '../logic';
 
 export const Timeline = memo(function Timeline({ day, rows, onOpen }) {
   return (
@@ -55,7 +56,7 @@ function TimelineItem({ item, day, onOpen }) {
       onPress={() => onOpen(item)}
       style={[styles.itemRow, { minHeight: blockHeight(item) }, active && styles.itemActive]}
       accessibilityRole="button"
-      accessibilityLabel={describeTimelineItem(item, day)}
+      accessibilityLabel={describeScheduledItem(item, day.items)}
       accessibilityHint={t(item.kind === 'routine' ? 'routine.openHint' : 'timewheel.openHint')}
     >
       <View style={styles.timeCol}>
@@ -72,7 +73,7 @@ function TimelineItem({ item, day, onOpen }) {
       <View style={styles.body}>
         <Text style={[styles.title, item.done && styles.doneText]}>{item.title}</Text>
         <Text style={styles.meta}>{item.done ? '✓ ' : ''}{itemDetails(item).join(' · ')}</Text>
-        {conflict ? <Text style={styles.conflictText}>⚠ {overlapText(item, day)}</Text> : null}
+        {conflict ? <Text style={styles.conflictText}>⚠ {overlapText(item, day.items)}</Text> : null}
       </View>
     </TouchableOpacity>
   );

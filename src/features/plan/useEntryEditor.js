@@ -1,7 +1,7 @@
 // src/features/plan/useEntryEditor.js
 //
 // The one place that opens the task/habit sheet and writes its result:
-// create, edit, delete (with confirmation). Used by Plan and Timewheel, so
+// create, edit, delete (with confirmation). Used by Plan, Timewheel and Kalender, so
 // there is a single task editor and a single save/delete behaviour.
 //
 // Returns { openEditor, showAlert, closeAlert, editorElements }. Render

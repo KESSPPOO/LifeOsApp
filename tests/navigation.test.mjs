@@ -18,9 +18,9 @@ const ROUTES = NAV.map(n => n.id);
 
 const LEGACY_ROUTES = ['home', 'uni', 'journal', 'finances', 'stats', 'groceries', 'goals', 'notes', 'links'];
 
-test('every pre-ADR-005 route id still exists (no renames); today, timewheel, more and routines are new', () => {
+test('every pre-ADR-005 route id still exists (no renames); today, timewheel, more, routines and calendar are new', () => {
   for (const id of LEGACY_ROUTES) assert.ok(ROUTES.includes(id), id);
-  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'more', 'routines']);
+  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'more', 'routines', 'calendar']);
   assert.equal(new Set(ROUTES).size, ROUTES.length, 'unique');
 });
 
@@ -130,6 +130,19 @@ test('Rutiner is secondary: on Mere under Livet (not a tab, not legacy), and Bac
   const nav = createNav();
   nav.navigate('journal');
   nav.navigate('routines');
+  assert.deepEqual([nav.back(), nav.back(), nav.back()], ['journal', 'today', 'EXIT']);
+});
+
+test('Kalender is secondary: on Mere under Livet and linked from Plan, no new tab; Back returns from it (ADR-009)', () => {
+  assert.equal(tabFor('calendar'), 'more');
+  assert.deepEqual(MORE_SECTIONS.find(s => s.id === 'life').items.map(n => n.id).slice(0, 2), ['routines', 'calendar']);
+  assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'timewheel', 'journal', 'more'], 'no new tab');
+  assert.equal(NAV.find(n => n.id === 'calendar').label, 'Kalender');
+  const plan = readFileSync(repoPath('../src/features/plan/screens/PlanScreen.js'), 'utf8');
+  assert.match(plan, /navigate\('calendar'\)/);
+  const nav = createNav();
+  nav.navigate('journal');
+  nav.navigate('calendar');
   assert.deepEqual([nav.back(), nav.back(), nav.back()], ['journal', 'today', 'EXIT']);
 });
 

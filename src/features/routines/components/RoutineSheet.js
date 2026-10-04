@@ -48,6 +48,8 @@ export function RoutineSheet({ editing, initial, onSave, onDelete, onClose }) {
           <Text style={styles.title} accessibilityRole="header">
             {t(editing ? 'routine.form.editTitle' : 'routine.form.newTitle')}
           </Text>
+          {/* Opened from a day (Tidshjul, Kalender, a checklist): a change is to the routine, on every day. */}
+          {editing ? <Text style={styles.note}>{t('routine.form.templateNote')}</Text> : null}
           <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
             <Text style={styles.label}>{t('routine.form.name')}</Text>
             <TextInput
@@ -175,6 +177,7 @@ const styles = StyleSheet.create({
   wrapper:  { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' },
   title:    { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 16, textAlign: 'center' },
+  note:     { fontSize: 14, lineHeight: 20, color: COLORS.textMuted, marginTop: -8, marginBottom: 16, textAlign: 'center' },
   label:    { fontSize: 14, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8, marginTop: 4 },
   input: {
     backgroundColor: COLORS.bg3, borderWidth: 1, borderColor: COLORS.border2, borderRadius: 12,

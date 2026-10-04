@@ -4,9 +4,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildDay, timelineRows, ringPoint, arcPath, blockHeight, timeRange, itemDetails,
-  describeTimelineItem, clockFor,
+  buildDay, timelineRows, ringPoint, arcPath, blockHeight,
 } from '../src/features/timewheel/logic.js';
+import { timeRange, itemDetails, describeScheduledItem, clockFor } from '../src/features/schedule/day.js';
 import { taskItem } from '../src/features/tasks/items.js';
 import { findOverlaps } from '../src/features/tasks/schedule.js';
 import { buildToday } from '../src/features/today/logic.js';
@@ -215,8 +215,8 @@ test('block heights follow the duration within readable limits; points are compa
 
 test('screen-reader text says time, length, state and overlap in words', () => {
   const d = day([timed(1, '15:00', 90, { text: 'Træning' }), timed(2, '15:45', 30, { text: 'Tandlæge' }), timed(3, '18:00', null, { text: 'Ring', done: true })], { nowMinutes: at('15:10') });
-  assert.equal(describeTimelineItem(d.items[0], d), 'fra 15:00 til 16:30, Træning, 1,5 time, i gang, overlapper med Tandlæge');
-  assert.equal(describeTimelineItem(d.items[2], d), 'klokken 18:00, Ring, Uden varighed, klaret');
+  assert.equal(describeScheduledItem(d.items[0], d.items), 'fra 15:00 til 16:30, Træning, 1,5 time, i gang, overlapper med Tandlæge');
+  assert.equal(describeScheduledItem(d.items[2], d.items), 'klokken 18:00, Ring, Uden varighed, klaret');
 });
 
 // ── Overlaps ───────────────────────────────────────────────────────────────

@@ -1,14 +1,15 @@
-// src/features/timewheel/components/ConflictPanel.js
+// src/features/schedule/ConflictPanel.js
 //
 // The calm overlap notice: "N ting overlapper", that nothing is moved
-// automatically, and (on request) each overlapping task with "Åbn" (open
-// it) and "Flyt" (open it at the time field). Both use the shared task
-// sheet; this panel never changes a schedule itself.
+// automatically, and (on request) each overlapping item with "Åbn" and
+// "Flyt". The screen decides what those open (Tidshjul and Kalender: a
+// task's sheet, at the time field for "Flyt"; a routine's checklist, or its
+// template for "Flyt"); this panel never changes a schedule itself.
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../../config/colors';
-import { t } from '../../../core/i18n';
-import { timeRange } from '../logic';
+import { COLORS } from '../../config/colors';
+import { t } from '../../core/i18n';
+import { timeRange } from './day';
 
 export function ConflictPanel({ conflicts, onOpen, onMove }) {
   const [expanded, setExpanded] = useState(false);

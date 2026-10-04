@@ -8,6 +8,7 @@
 //
 // Routines are not tasks: today's routines are listed in their own small
 // "Rutiner" section (opening the day's checklist), with a link to Rutiner.
+// One quiet link under the heading opens Kalender (the day and the week).
 //
 // Time-bound and flexible items are kept apart: today's timed tasks are a
 // time-ordered list with the time in its own column; tasks without a time
@@ -131,6 +132,15 @@ export default function PlanScreen() {
             <Text style={styles.subline}>{t('task.progress', plan.progress)}</Text>
           ) : null}
         </View>
+
+        {/* Kalender: the day and the week at a glance (a view over the same tasks). */}
+        <LinkRow
+          icon="📅"
+          label={t('nav.calendar')}
+          meta={t('plan.calendarMeta')}
+          onPress={() => navigation.navigate('calendar')}
+          style={styles.calendarLink}
+        />
 
         <Section title={t('plan.today')}>
           {plan.timedToday.length > 0 ? (
@@ -349,6 +359,7 @@ const styles = StyleSheet.create({
 
   linkRow:      { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   routinesLink: { marginBottom: 24, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  calendarLink: { marginBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
   hint:         { fontSize: 13, color: COLORS.textMuted, marginBottom: 8 },
   clearAll:     { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   clearAllText: { fontSize: 15, color: COLORS.red },

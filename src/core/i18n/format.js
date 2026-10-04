@@ -33,6 +33,16 @@ export function formatDayMonth(key, today) {
   return today && key.slice(0, 4) !== today.slice(0, 4) ? `${base} ${d.getFullYear()}` : base;
 }
 
+/**
+ * A span of days, e.g. a week: '5.–11. oktober' within one month,
+ * otherwise '28. september – 4. oktober' (each date with its year when it
+ * differs from `today`'s, so '29. december 2025 – 4. januar').
+ */
+export function formatDateRange(from, to, today) {
+  if (from.slice(0, 7) === to.slice(0, 7)) return `${parseDateKey(from).getDate()}.–${formatDayMonth(to, today)}`;
+  return `${formatDayMonth(from, today)} – ${formatDayMonth(to, today)}`;
+}
+
 /** (2026, 9) -> 'oktober 2026' (monthIndex 0 = januar). */
 export function formatMonthYear(year, monthIndex) {
   return `${MONTHS[monthIndex]} ${year}`;

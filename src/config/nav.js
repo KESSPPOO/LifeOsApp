@@ -7,7 +7,7 @@
 //
 // Bottom bar: I dag · Tidshjul · Plan · Mere. Træning and Mad become tabs
 // between Plan and Mere once those modules exist. Everything else is listed
-// on Mere.
+// on Mere (Kalender too, also linked from Plan; ADR-009).
 //
 // Note: the Plan route keeps the id 'journal' (the Tasks screen's old
 // internal name). Route ids are not storage keys (those live in
@@ -21,6 +21,7 @@ export const NAV = [
   { id: 'journal',   label: t('nav.plan'),      icon: '📋', tab: true },
   { id: 'more',      label: t('nav.more'),      icon: '☰',  tab: true },
   { id: 'routines',  label: t('nav.routines'),  icon: '🔁', section: 'life' },
+  { id: 'calendar',  label: t('nav.calendar'),  icon: '📅', section: 'life' },
   { id: 'groceries', label: t('nav.groceries'), icon: '🛒', section: 'life' },
   { id: 'goals',     label: t('nav.goals'),     icon: '🗺', section: 'life' },
   { id: 'notes',     label: t('nav.notes'),     icon: '💡', section: 'life' },

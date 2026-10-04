@@ -28,7 +28,7 @@ prototype.**
 |---|---|
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
-| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Tidshjul · Plan · Mere** (ADR-005, ADR-007); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer. The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
+| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Tidshjul · Plan · Mere** (ADR-005, ADR-007); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer (Kalender too, also linked from Plan; ADR-009). The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
 | State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links, routines + routineLog) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
@@ -63,20 +63,28 @@ src/
                        (hydration, data safety, ordered saves); tested per module
   features/today/      I dag: logic.js (NU/NÆSTE + overview, pure), screens/TodayScreen.js.
                        Reads tasks, goals, groceries stores
-  features/timewheel/  Tidshjul (route `timewheel`, ADR-007): logic.js (one date's timed
-                       items, lanes, overlaps, timeline rows, ring geometry; pure),
-                       screens/TimewheelScreen.js, components/DayRing.js (SVG), Timeline.js,
-                       ConflictPanel.js.
-                       A view over the tasks store; persists nothing
+  features/schedule/   day.js: getScheduleForDate = THE per-date schedule (timed tasks +
+                       routine occurrences incl. those crossing midnight, lanes, overlaps,
+                       untimed; ADR-009), clockFor, the per-item words (timeRange,
+                       itemDetails, overlapText, describeScheduledItem); ConflictPanel.js.
+                       Used by Tidshjul and Kalender; persists nothing
+  features/timewheel/  Tidshjul (route `timewheel`, ADR-007): logic.js (buildDay on the shared
+                       schedule: NU/NÆSTE, flexible list, timeline rows, ring geometry; pure),
+                       screens/TimewheelScreen.js, components/DayRing.js (SVG), Timeline.js.
+                       A view; persists nothing
+  features/calendar/   Kalender (route `calendar`, Mere → Livet + Plan link; ADR-009): logic.js
+                       (mode + selected-date reducer, weeks, time window, Dag/Uge models,
+                       screen-reader text; pure), screens/CalendarScreen.js,
+                       components/DayGrid.js, WeekStrip.js, ScheduleRow.js. A view; persists nothing
   features/routines/   Rutiner (route `routines`, Mere → Livet; ADR-008): model.js (weekly
                        recurrence, derived occurrences, per-date completion log, form; pure),
                        store.js (routines + routineLog), useRoutineChecklist.js (the daily
-                       checklist, opened from I dag / Tidshjul / Plan / Rutiner),
+                       checklist, opened from I dag / Tidshjul / Kalender / Plan / Rutiner),
                        screens/RoutinesScreen.js, components/RoutineSheet.js, ChecklistSheet.js
   features/plan/       Plan (route `journal`): logic.js (grouping, list operations, task
                        form validation, pure), screens/PlanScreen.js, components/TaskSheet.js,
                        Composer.js; useEntryEditor.js (THE task/habit editor,
-                       also used by Timewheel)
+                       also used by Timewheel and Kalender)
   features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal /
                        useToggleEntry (ticks on the real current day) / useTickedThisVisit;
                        schedule.js: optional startTime/durationMinutes (ADR-006), status,
@@ -239,7 +247,11 @@ Things that are easy to get wrong:
   them calls it rather than ranking tasks itself. Anything with `date` /
   `startTime` / `durationMinutes` (a task, a routine occurrence) goes
   through `src/features/tasks/schedule.js`; new scheduled kinds join as
-  items (like `routineItem`), never as copies in the task list.
+  items (like `routineItem`), never as copies in the task list. A view of
+  one date (Tidshjul, Kalender, anything new) reads it from
+  `getScheduleForDate` (`src/features/schedule/day.js`) instead of gathering
+  tasks and routines itself, so the views never disagree on items or
+  overlaps. Nothing in a view is stored: no event store, no generated days.
 - Routines are templates; occurrences are derived per date and only the
   per-date completion (`routineLog`) is stored (ADR-008). Tasks are edited only
   through `useEntryEditor` (one sheet, one save/delete path).

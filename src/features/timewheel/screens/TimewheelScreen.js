@@ -26,10 +26,11 @@ import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 import { describeItem } from '../../tasks/items';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { useEntryEditor } from '../../plan/useEntryEditor';
-import { buildDay, timelineRows, clockFor } from '../logic';
+import { buildDay, timelineRows } from '../logic';
+import { clockFor } from '../../schedule/day';
 import { DayRing } from '../components/DayRing';
 import { Timeline } from '../components/Timeline';
-import { ConflictPanel } from '../components/ConflictPanel';
+import { ConflictPanel } from '../../schedule/ConflictPanel';
 
 const FLEXIBLE_SHOWN = 3;
 

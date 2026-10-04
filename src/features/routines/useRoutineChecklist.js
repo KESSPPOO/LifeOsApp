@@ -1,6 +1,6 @@
 // src/features/routines/useRoutineChecklist.js
 //
-// Opens a routine's checklist for a date, from any screen (I dag, Tidshjul,
+// Opens a routine's checklist for a date, from any screen (I dag, Tidshjul, Kalender,
 // Plan, Rutiner). The sheet is derived from the stores on every render, so
 // a tick shows at once here and on every screen reading the same log.
 // Returns { openChecklist(occurrence or item), checklistElement } (render

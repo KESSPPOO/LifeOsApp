@@ -11,7 +11,8 @@ import {
 import { selectFocus } from '../src/features/tasks/focus.js';
 import { describeItem } from '../src/features/tasks/items.js';
 import { buildToday } from '../src/features/today/logic.js';
-import { buildDay, timelineRows, itemDetails } from '../src/features/timewheel/logic.js';
+import { buildDay, timelineRows } from '../src/features/timewheel/logic.js';
+import { itemDetails } from '../src/features/schedule/day.js';
 import { timeToMinutes } from '../src/core/time/timeOfDay.js';
 import { KEYS } from '../src/core/storage/keys.js';
 import { createPersistedListStore } from '../src/core/state/persistedListStore.js';

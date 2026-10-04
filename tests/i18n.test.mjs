@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  t, formatNumber, formatMoney, formatDateLong, formatDayMonth, formatRelativeDay,
+  t, formatNumber, formatMoney, formatDateLong, formatDayMonth, formatDateRange, formatRelativeDay,
 } from '../src/core/i18n/index.js';
 import { da } from '../src/core/i18n/da.js';
 import { repoPath, sourceFiles } from './fixtures.mjs';
@@ -76,6 +76,13 @@ test('formatDateLong: Danish weekday and month', () => {
   assert.equal(formatDateLong('2026-10-03'), 'Lørdag den 3. oktober');
   assert.equal(formatDateLong('2026-09-28'), 'Mandag den 28. september');
   assert.equal(formatDateLong('2027-01-01'), 'Fredag den 1. januar');
+});
+
+test('formatDateRange: one month, two months, two years', () => {
+  assert.equal(formatDateRange('2026-10-05', '2026-10-11', '2026-10-03'), '5.–11. oktober');
+  assert.equal(formatDateRange('2026-09-28', '2026-10-04', '2026-10-03'), '28. september – 4. oktober');
+  assert.equal(formatDateRange('2026-12-28', '2027-01-03', '2026-10-03'), '28. december – 3. januar 2027');
+  assert.equal(formatDateRange('2027-05-03', '2027-05-09', '2026-10-03'), '3.–9. maj 2027');
 });
 
 test('formatDayMonth adds the year only when it differs from today', () => {
