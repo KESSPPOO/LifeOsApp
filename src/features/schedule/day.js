@@ -20,7 +20,7 @@ import { taskItem } from '../tasks/items.js';
 import { routineItemsOn } from '../routines/model.js';
 import { addDays, daysBetween } from '../../core/time/dates.js';
 import { MINUTES_PER_DAY, minutesToTime } from '../../core/time/timeOfDay.js';
-import { t, formatDuration } from '../../core/i18n/index.js';
+import { t, formatDuration, formatRelativeDay } from '../../core/i18n/index.js';
 
 /**
  * Timed items on `date`, in time order (equal starts: shorter first, then
@@ -97,6 +97,13 @@ export function getScheduleForDate({ journal, routines = [], routineLog = [], da
     ...routineItems.filter(item => item.startTime === null),
   ];
   return { items, conflicts, untimed };
+}
+
+/** 'I går' / 'I dag' / 'I morgen' for a heading, or null further away. */
+export function relativeDayLabel(date, today) {
+  if (Math.abs(daysBetween(today, date)) > 1) return null;
+  const text = formatRelativeDay(date, today);
+  return text[0].toUpperCase() + text.slice(1);
 }
 
 /** Where `date` lies from `today`: 'today' | 'past' | 'future'. */

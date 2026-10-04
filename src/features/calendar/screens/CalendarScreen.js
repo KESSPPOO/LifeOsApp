@@ -16,9 +16,8 @@ import React, { useCallback, useMemo, useReducer } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../../config/colors';
 import { Choice } from '../../../components/Choice';
-import { capitalize } from '../../../data/helpers';
 import { t, formatDateLong, formatRelativeDay } from '../../../core/i18n';
-import { localDateKey, daysBetween, startOfWeek } from '../../../core/time/dates';
+import { localDateKey, startOfWeek } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
 import { useJournal } from '../../tasks/store';
@@ -26,7 +25,7 @@ import { FocusLabel } from '../../tasks/components/ItemRow';
 import { useRoutines, useRoutineLog } from '../../routines/store';
 import { useRoutineChecklist } from '../../routines/useRoutineChecklist';
 import { useEntryEditor } from '../../plan/useEntryEditor';
-import { clockFor } from '../../schedule/day';
+import { clockFor, relativeDayLabel } from '../../schedule/day';
 import { ConflictPanel } from '../../schedule/ConflictPanel';
 import { DateHeader } from '../../schedule/DateHeader';
 import { useScheduleItemActions } from '../../schedule/useScheduleItemActions';
@@ -72,7 +71,7 @@ export default function CalendarScreen() {
   const newTask = () => openEditor('task', { text: '', date });
 
   const { title, subline } = calendarTitle(mode, date, today);
-  const relative = Math.abs(daysBetween(today, date)) <= 1 ? capitalize(formatRelativeDay(date, today)) : null;
+  const relative = relativeDayLabel(date, today);
 
   return (
     <View style={styles.root}>
@@ -84,7 +83,7 @@ export default function CalendarScreen() {
           prevLabel={t(week ? 'calendar.prevWeek' : 'timewheel.prevDay')}
           nextLabel={t(week ? 'calendar.nextWeek' : 'timewheel.nextDay')}
           onStep={step}
-          onToday={state.date !== null ? () => dispatch({ type: 'today' }) : null}
+          onToday={date !== today ? () => dispatch({ type: 'today' }) : null}
         />
 
         <View style={styles.controls}>
@@ -104,7 +103,7 @@ export default function CalendarScreen() {
 
         {week ? (
           <>
-            <WeekStrip week={weekModel} selectedDate={date} onSelect={select} />
+            <WeekStrip week={weekModel} selectedDate={date} today={today} onSelect={select} />
             {weekModel.projected ? <Text style={styles.note}>{t('calendar.projected')}</Text> : null}
             {weekModel.empty ? (
               <Text style={styles.quiet}>{t('calendar.weekOpen')}</Text>
@@ -112,12 +111,13 @@ export default function CalendarScreen() {
               <View style={styles.detail}>
                 <View style={styles.detailHeader}>
                   <Text style={styles.detailTitle} accessibilityRole="header">
-                    {[relative, formatDateLong(date)].filter(Boolean).join(' · ')}
+                    {[relative, formatDateLong(date, today)].filter(Boolean).join(' · ')}
                   </Text>
                   <TouchableOpacity
                     onPress={() => dispatch({ type: 'mode', mode: 'day' })}
                     style={styles.showDay}
                     accessibilityRole="button"
+                    accessibilityLabel={t('calendar.showDay')}
                   >
                     <Text style={styles.showDayText}>{t('calendar.showDay')} ›</Text>
                   </TouchableOpacity>

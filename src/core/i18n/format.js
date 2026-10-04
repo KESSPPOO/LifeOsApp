@@ -48,9 +48,12 @@ export function formatMonthYear(year, monthIndex) {
   return `${MONTHS[monthIndex]} ${year}`;
 }
 
-/** '2026-10-03' -> 'Lørdag den 3. oktober' (a heading). */
-export function formatDateLong(key) {
-  const text = `${WEEKDAYS[weekdayIndex(key)]} den ${formatDayMonth(key)}`;
+/**
+ * '2026-10-03' -> 'Lørdag den 3. oktober' (a heading); with `today`, the
+ * year is added when it differs ('Fredag den 1. januar 2027').
+ */
+export function formatDateLong(key, today) {
+  const text = `${WEEKDAYS[weekdayIndex(key)]} den ${formatDayMonth(key, today)}`;
   return text[0].toUpperCase() + text.slice(1);
 }
 

@@ -12,6 +12,7 @@ import {
   describeCalendarItem, describeUntimedItem, describeWeekDay,
 } from '../src/features/calendar/logic.js';
 import { buildDay } from '../src/features/timewheel/logic.js';
+import { relativeDayLabel } from '../src/features/schedule/day.js';
 import { formFromEntry, readTaskForm, addTask } from '../src/features/plan/logic.js';
 import { KEYS } from '../src/core/storage/keys.js';
 import { timeToMinutes } from '../src/core/time/timeOfDay.js';
@@ -278,7 +279,7 @@ test('screen readers: untimed items and week days', () => {
   const w = week();
   assert.equal(describeWeekDay(w.days[0]), 'Mandag den 5. oktober, i dag, 3 planlagte ting, 1 konflikt');
   assert.equal(describeWeekDay(w.days[6]), 'Søndag den 11. oktober, 1 planlagt ting, 1 klaret');
-  assert.equal(describeWeekDay({ date: '2026-11-03', isToday: false, count: 0, doneCount: 0, conflictCount: 0 }), 'Tirsdag den 3. november, åben');
+  assert.equal(describeWeekDay({ date: '2026-11-03', isToday: false, items: [], count: 0, doneCount: 0, conflictCount: 0 }), 'Tirsdag den 3. november, åben');
 });
 
 // ── Actions and data ────────────────────────────────────────────────────────
@@ -320,4 +321,43 @@ test('Kalender stores nothing: no store, no storage key, no storage access, no n
       assert.ok(from.startsWith('.') || ['react', 'react-native', '@react-navigation/native'].includes(from), `${file}: ${from}`);
     }
   }
+});
+
+// ── /code-review regressions ────────────────────────────────────────────────
+
+test('regression: a week whose only item continues from the Sunday before is not "open"', () => {
+  const w = buildCalendarWeek({ journal: [timed(1, '23:00', 120, { date: '2026-10-04' })], routines: [], routineLog: [], date: MON, today: MON });
+  assert.equal(w.days[0].count, 0, 'counted on its own day');
+  assert.equal(w.days[0].items.length, 1, 'drawn on Monday from 00:00');
+  assert.equal(w.empty, false, 'the selected day stays listed, so the item can be opened');
+  assert.equal(describeWeekDay(w.days[0]), 'Mandag den 5. oktober, i dag, fortsat fra dagen før');
+});
+
+test('regression: four overlapping items get four lines in the week track', () => {
+  const journal = [1, 2, 3, 4].map(id => timed(id, '10:00', 60));
+  const w = buildCalendarWeek({ journal, routines: [], routineLog: [], date: MON, today: MON });
+  assert.deepEqual(w.days[0].items.map(i => i.lane), [0, 1, 2, 3]);
+  assert.equal(w.days[0].lanes, 4);
+  assert.equal(w.days[1].lanes, 1);
+});
+
+test('regression: Dag and the week rows name the year when it is not this year', () => {
+  assert.equal(calendarTitle('day', '2027-01-01', MON).title, 'Fredag den 1. januar 2027');
+  assert.equal(calendarTitle('day', MON, MON).title, 'Mandag den 5. oktober');
+  const w = buildCalendarWeek({ journal: [], routines: [], routineLog: [], date: '2027-01-01', today: MON });
+  assert.equal(describeWeekDay(w.days[4], MON), 'Fredag den 1. januar 2027, åben');
+});
+
+test('regression: "I dag" shows only when another date than today is shown (also after midnight)', () => {
+  assert.match(screenSource, /onToday=\{date !== today \?/);
+  const wheel = readFileSync(repoPath('../src/features/timewheel/screens/TimewheelScreen.js'), 'utf8');
+  assert.match(wheel, /onToday=\{date !== today \?/);
+});
+
+test('regression: the relative day label is one rule for both views', () => {
+  assert.equal(relativeDayLabel('2026-10-04', MON), 'I går');
+  assert.equal(relativeDayLabel(MON, MON), 'I dag');
+  assert.equal(relativeDayLabel('2026-10-06', MON), 'I morgen');
+  assert.equal(relativeDayLabel('2026-10-07', MON), null);
+  assert.match(screenSource, /accessibilityLabel=\{t\('calendar\.showDay'\)\}/);
 });

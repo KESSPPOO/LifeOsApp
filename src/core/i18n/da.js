@@ -248,6 +248,7 @@ export const da = {
   'calendar.empty.untimed':  'Intet med tidspunkt denne dag',
   'calendar.weekOpen':       'Din uge er åben. Der er intet planlagt.',
   'calendar.dayOpen':    'Åben',
+  'calendar.continued':  'Fortsat fra dagen før',
   'calendar.count':      { one: '1 ting', other: '{count} ting' },
   'calendar.conflicts':  { one: '1 konflikt', other: '{count} konflikter' },
   'calendar.done':       '{count} klaret',

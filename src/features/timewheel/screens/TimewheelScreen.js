@@ -15,9 +15,8 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { LinkRow } from '../../../components/LinkRow';
-import { capitalize } from '../../../data/helpers';
 import { t, formatDateLong, formatRelativeDay } from '../../../core/i18n';
-import { localDateKey, addDays, daysBetween, isoWeekNumber } from '../../../core/time/dates';
+import { localDateKey, addDays, isoWeekNumber } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
 import { useJournal, useTickedThisVisit } from '../../tasks/store';
@@ -27,7 +26,7 @@ import { describeItem } from '../../tasks/items';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { useEntryEditor } from '../../plan/useEntryEditor';
 import { buildDay, timelineRows } from '../logic';
-import { clockFor } from '../../schedule/day';
+import { clockFor, relativeDayLabel } from '../../schedule/day';
 import { DayRing } from '../components/DayRing';
 import { Timeline } from '../components/Timeline';
 import { ConflictPanel } from '../../schedule/ConflictPanel';
@@ -69,7 +68,7 @@ export default function TimewheelScreen() {
   // task's time field or the routine's template (shared with Kalender).
   const { open, move } = useScheduleItemActions({ openEditor, openChecklist });
 
-  const relativeLabel = Math.abs(daysBetween(today, date)) <= 1 ? capitalize(formatRelativeDay(date, today)) : null;
+  const relativeLabel = relativeDayLabel(date, today);
 
   return (
     <View style={styles.root}>
@@ -81,7 +80,7 @@ export default function TimewheelScreen() {
           prevLabel={t('timewheel.prevDay')}
           nextLabel={t('timewheel.nextDay')}
           onStep={step}
-          onToday={selected !== null ? () => setSelected(null) : null}
+          onToday={date !== today ? () => setSelected(null) : null}
         />
 
         {/* ── 1. NU / NÆSTE ── */}

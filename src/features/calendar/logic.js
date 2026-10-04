@@ -64,7 +64,7 @@ export function weekDates(date) {
 /** The heading: Dag 'Mandag den 5. oktober' / 'Uge 41'; subline: the week, or the week's dates. */
 export function calendarTitle(mode, date, today) {
   const week = t('today.week', { week: isoWeekNumber(date) });
-  if (mode === 'day') return { title: formatDateLong(date), subline: week };
+  if (mode === 'day') return { title: formatDateLong(date, today), subline: week };
   const days = weekDates(date);
   return { title: week, subline: formatDateRange(days[0], days[6], today) };
 }
@@ -190,6 +190,7 @@ export function buildCalendarDay({ journal, routines = [], routineLog = [], date
  *   count     what is planned that day: items starting on it plus untimed
  *             (a task running past midnight counts on its own day only)
  *   doneCount, conflictCount (overlap groups, as in Tidshjul)
+ *   lanes     lines its track needs (one per overlapping item)
  *   isToday
  * window: one for the whole week, so the days line up.
  * The same for every date of a week (the selected day is the screen's), and
@@ -207,6 +208,7 @@ export function buildCalendarWeek({ journal, routines = [], routineLog = [], dat
       count: own.length,
       doneCount: own.filter(item => item.done).length,
       conflictCount: conflicts.length,
+      lanes: Math.max(1, ...items.map(item => item.lane + 1)),
       projected: projectsRoutines(day, today, [...items, ...untimed]),
     };
   });
@@ -228,7 +230,7 @@ export function buildCalendarWeek({ journal, routines = [], routineLog = [], dat
     days,
     window,
     axis,
-    empty: days.every(day => day.count === 0),
+    empty: days.every(day => day.count === 0 && day.items.length === 0),
     projected: days.some(day => day.projected),
   };
 }
@@ -256,12 +258,18 @@ export function describeUntimedItem(item) {
   return [item.title, item.kindLabel ?? t('calendar.task'), t('calendar.a11y.untimed'), ...untimedState(item)].join(', ');
 }
 
+/** What a week row says it holds: '3 ting', 'Fra dagen før' (only an item from the night before) or 'Åben'. */
+export function weekDayCount(day) {
+  if (day.count > 0) return t('calendar.count', { count: day.count });
+  return t(day.items.length > 0 ? 'calendar.continued' : 'calendar.dayOpen');
+}
+
 /** A day in Uge: 'Mandag den 5. oktober, i dag, 3 planlagte ting, 1 klaret, 1 konflikt' (selection is a state). */
-export function describeWeekDay(day) {
+export function describeWeekDay(day, today) {
   return [
-    formatDateLong(day.date),
+    formatDateLong(day.date, today),
     day.isToday ? t('nav.today').toLowerCase() : null,
-    day.count > 0 ? t('calendar.a11y.count', { count: day.count }) : t('calendar.dayOpen').toLowerCase(),
+    day.count > 0 ? t('calendar.a11y.count', { count: day.count }) : weekDayCount(day).toLowerCase(),
     day.doneCount > 0 ? t('calendar.done', { count: day.doneCount }) : null,
     day.conflictCount > 0 ? t('calendar.conflicts', { count: day.conflictCount }) : null,
   ].filter(Boolean).join(', ');

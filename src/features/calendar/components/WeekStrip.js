@@ -13,12 +13,13 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../../config/colors';
 import { t, weekdayName } from '../../../core/i18n';
 import { weekdayIndex } from '../../../core/time/dates';
-import { describeWeekDay } from '../logic';
+import { describeWeekDay, weekDayCount } from '../logic';
 
-const LANE_TOP = [5, 13, 21];
+const LANE_TOP = 5;
+const LANE_STEP = 8;
 const pct = (fraction) => `${fraction * 100}%`;
 
-export const WeekStrip = memo(function WeekStrip({ week, selectedDate, onSelect }) {
+export const WeekStrip = memo(function WeekStrip({ week, selectedDate, today, onSelect }) {
   return (
     <View>
       <View style={styles.axisRow} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
@@ -31,20 +32,20 @@ export const WeekStrip = memo(function WeekStrip({ week, selectedDate, onSelect 
         <View style={styles.countCol} />
       </View>
       {week.days.map(day => (
-        <WeekRow key={day.date} day={day} selected={day.date === selectedDate} axis={week.axis} onSelect={onSelect} />
+        <WeekRow key={day.date} day={day} selected={day.date === selectedDate} today={today} axis={week.axis} onSelect={onSelect} />
       ))}
     </View>
   );
 });
 
-function WeekRow({ day, selected, axis, onSelect }) {
+function WeekRow({ day, selected, today, axis, onSelect }) {
   return (
     <TouchableOpacity
       onPress={() => onSelect(day.date)}
       style={[styles.row, selected && styles.rowSelected]}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={describeWeekDay(day)}
+      accessibilityLabel={describeWeekDay(day, today)}
       accessibilityHint={t('calendar.a11y.weekHint')}
     >
       <View style={styles.labelCol}>
@@ -52,7 +53,8 @@ function WeekRow({ day, selected, axis, onSelect }) {
         {/* Today: the date sits in a filled pill (a shape, not only a colour). */}
         <Text style={[styles.dayNumber, day.isToday && styles.todayNumber]}>{Number(day.date.slice(8))}.</Text>
       </View>
-      <View style={styles.track}>
+      {/* One line per overlapping item: the track grows instead of stacking bars. */}
+      <View style={[styles.track, { height: Math.max(32, 2 * LANE_TOP + day.lanes * LANE_STEP - 2) }]}>
         {axis.map(mark => <View key={mark.label} style={[styles.gridLine, { left: pct(mark.left) }]} />)}
         {day.items.map(item => (item.end === null ? (
           <View key={item.id} style={[styles.tick, item.done && styles.barDone, { left: pct(item.bar.left) }]} />
@@ -63,13 +65,13 @@ function WeekRow({ day, selected, axis, onSelect }) {
               styles.bar,
               item.overlapsWith.length > 0 && styles.barConflict,
               item.done && styles.barDone,
-              { left: pct(item.bar.left), width: pct(item.bar.width), top: LANE_TOP[Math.min(item.lane, LANE_TOP.length - 1)] },
+              { left: pct(item.bar.left), width: pct(item.bar.width), top: LANE_TOP + item.lane * LANE_STEP },
             ]}
           />
         )))}
       </View>
       <View style={styles.countCol}>
-        <Text style={styles.count}>{day.count > 0 ? t('calendar.count', { count: day.count }) : t('calendar.dayOpen')}</Text>
+        <Text style={styles.count}>{weekDayCount(day)}</Text>
         {day.conflictCount > 0 ? <Text style={styles.conflict}>⚠ {day.conflictCount}</Text> : null}
       </View>
     </TouchableOpacity>
@@ -93,7 +95,7 @@ const styles = StyleSheet.create({
   dayNumber:   { alignSelf: 'flex-start', fontSize: 13, color: COLORS.textMuted, marginTop: 1, paddingHorizontal: 4, marginLeft: -4, borderRadius: 8, overflow: 'hidden', fontVariant: ['tabular-nums'] },
   todayNumber: { backgroundColor: COLORS.accentDim, color: COLORS.text, fontWeight: '700' },
 
-  track:       { flex: 1, height: 32, borderRadius: 6, backgroundColor: COLORS.bg2 },
+  track:       { flex: 1, borderRadius: 6, backgroundColor: COLORS.bg2 },
   gridLine:    { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   bar:         { position: 'absolute', height: 6, minWidth: 3, borderRadius: 3, backgroundColor: COLORS.accent },
   barConflict: { backgroundColor: COLORS.amber },
