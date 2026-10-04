@@ -4,8 +4,17 @@
 // description, shared by I dag and Plan so the two screens always agree on
 // a task's state ("I gang til 11:45", "Fra i går", …). Pure; "now" is
 // passed in.
-import { getSchedule, scheduleStatus, scheduleLabel, endTime } from './schedule.js';
-import { t, formatRelativeDay } from '../../core/i18n/index.js';
+import { getSchedule, scheduleStatus, endTime } from './schedule.js';
+import { minutesToTime } from '../../core/time/timeOfDay.js';
+import { t, formatRelativeDay, formatDuration } from '../../core/i18n/index.js';
+
+/** '10:45' or '10:45 · 1 time'; '' for an untimed task. */
+export function scheduleLabel(task) {
+  const schedule = getSchedule(task);
+  if (!schedule) return '';
+  const start = minutesToTime(schedule.start);
+  return schedule.duration ? `${start} · ${formatDuration(schedule.duration)}` : start;
+}
 
 /**
  * { kind: 'task', id, title, done, date, startTime, durationMinutes,
@@ -43,11 +52,11 @@ export function habitItem(habit, today) {
  */
 export function describeItem(item, today, { plannedDay = true } = {}) {
   const parts = [];
-  if (item.kind === 'habit') parts.push(t('today.meta.habit'));
-  if (!item.done && item.status === 'active') parts.push(t('today.meta.activeUntil', { time: item.endTime }));
-  if (!item.done && item.status === 'past' && item.date === today) parts.push(t('today.meta.timePassed'));
-  if (item.carriedOver) parts.push(t('today.meta.carriedOver', { day: formatRelativeDay(item.date, today) }));
-  if (item.planned && plannedDay) parts.push(t('today.meta.planned', { day: formatRelativeDay(item.date, today) }));
-  if (item.important) parts.push(t('today.meta.important'));
+  if (item.kind === 'habit') parts.push(t('task.meta.habit'));
+  if (!item.done && item.status === 'active') parts.push(t('task.meta.activeUntil', { time: item.endTime }));
+  if (!item.done && item.status === 'past' && item.date === today) parts.push(t('task.meta.timePassed'));
+  if (item.carriedOver) parts.push(t('task.meta.carriedOver', { day: formatRelativeDay(item.date, today) }));
+  if (item.planned && plannedDay) parts.push(t('task.meta.planned', { day: formatRelativeDay(item.date, today) }));
+  if (item.important) parts.push(t('task.meta.important'));
   return parts.join(' · ');
 }

@@ -10,7 +10,6 @@
 // stored. Habits (recurring) and undated tasks are never timed.
 import { isTimeOfDay, timeToMinutes, minutesToTime, MINUTES_PER_DAY } from '../../core/time/timeOfDay.js';
 import { isDateKey, daysBetween } from '../../core/time/dates.js';
-import { formatDuration } from '../../core/i18n/format.js';
 
 export const MAX_DURATION_MINUTES = MINUTES_PER_DAY;
 /** The quick choices offered in the task form. */
@@ -26,7 +25,7 @@ export function isValidDuration(value) {
  * untimed task. `duration`/`end` are null when the duration is unknown.
  */
 export function getSchedule(task) {
-  if (task.recurring || !isDateKey(task.date)) return null;
+  if (!canBeTimed(task)) return null;
   const start = timeToMinutes(task.startTime);
   if (start === null) return null;
   const duration = isValidDuration(task.durationMinutes) ? task.durationMinutes : null;
@@ -34,6 +33,9 @@ export function getSchedule(task) {
 }
 
 export const isTimed = (task) => getSchedule(task) !== null;
+
+/** Whether a task can carry a time at all: a dated one-off task. */
+const canBeTimed = (task) => !task.recurring && isDateKey(task.date);
 
 /** Derived 'HH:mm' end time (next day's clock time after midnight), or null. */
 export function endTime(task) {
@@ -70,25 +72,23 @@ export function compareStart(a, b) {
   return sa - sb;
 }
 
-/** '10:45' or '10:45 · 1 time'; '' for an untimed task. */
-export function scheduleLabel(task) {
-  const schedule = getSchedule(task);
-  if (!schedule) return '';
-  const start = minutesToTime(schedule.start);
-  return schedule.duration ? `${start} · ${formatDuration(schedule.duration)}` : start;
+/** Tasks on any days: earlier date first, then compareStart. */
+export function compareDateStart(a, b) {
+  return a.date.localeCompare(b.date) || compareStart(a, b);
 }
 
 /**
  * The task with the form's time fields applied. A field without a valid
  * value is REMOVED (never stored as null), so saving a task that has no
  * time leaves no schedule keys behind; a duration is only kept together
- * with a start time.
+ * with a start time, and a time only on a task that can be timed (dated,
+ * not a habit).
  */
 export function withSchedule(task, { startTime, durationMinutes }) {
   const next = { ...task };
   delete next.startTime;
   delete next.durationMinutes;
-  if (!isTimeOfDay(startTime)) return next;
+  if (!canBeTimed(next) || !isTimeOfDay(startTime)) return next;
   next.startTime = startTime;
   if (isValidDuration(durationMinutes)) next.durationMinutes = durationMinutes;
   return next;

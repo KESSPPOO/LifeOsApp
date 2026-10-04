@@ -3,20 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   localDateKey, gradeWeight, gradeLabel, calculateAverages, predictedDegreeGrade,
-  last7Days, fmtTimer,
+  fmtTimer,
 } from '../src/data/helpers.js';
 
 test('localDateKey uses local calendar fields, zero-padded', () => {
   assert.equal(localDateKey(new Date(2026, 0, 5)), '2026-01-05');
   // Local midnight must never roll back a day (the toISOString() bug).
   assert.equal(localDateKey(new Date(2026, 5, 1, 0, 30)), '2026-06-01');
-});
-
-test('last7Days ends today and is in ascending order', () => {
-  const days = last7Days();
-  assert.equal(days.length, 7);
-  assert.equal(days[6], localDateKey(new Date()));
-  assert.deepEqual([...days].sort(), days);
 });
 
 test('gradeWeight treats 31 (30L) as 30 and never returns NaN', () => {

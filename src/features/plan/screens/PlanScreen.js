@@ -21,54 +21,41 @@
 //   have a fixed height, which DraggableList needs.
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
 import { COLORS } from '../../../config/colors';
 import { CheckButton } from '../../../components/CheckButton';
 import { CustomAlert } from '../../../components/CustomAlert';
 import { DraggableList } from '../../../components/DraggableList';
 import { capitalize } from '../../../data/helpers';
-import { computeStreak, toggleJournalEntry } from '../../../data/tasks';
+import { computeStreak } from '../../../data/tasks';
 import { t, formatDateLong, formatRelativeDay, formatDuration } from '../../../core/i18n';
 import { localDateKey, addDays } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
-import { useJournal, useSetJournal } from '../../tasks/store';
+import { useJournal, useSetJournal, useToggleEntry } from '../../tasks/store';
 import { taskItem, describeItem } from '../../tasks/items';
 import {
   groupPlan, addTask, updateTask, addHabit, updateHabit, deleteEntry, reorderSection, formFromEntry,
 } from '../logic';
 import { TaskSheet } from '../components/TaskSheet';
-import { Choice } from '../components/Choice';
+import { Composer } from '../components/Composer';
 
 const TASK_ROW_HEIGHT = 64;
 const HABIT_ROW_HEIGHT = 88;
 
-/** The composer's date choices, resolved against the current day when used. */
-const COMPOSER_DAYS = [
-  { id: 'today',    label: 'taskForm.today',    offset: 0 },
-  { id: 'tomorrow', label: 'taskForm.tomorrow', offset: 1 },
-  { id: 'none',     label: 'taskForm.noDate',   offset: null },
-];
-const composerDate = (dayId) => {
-  const { offset } = COMPOSER_DAYS.find(d => d.id === dayId);
-  return offset === null ? null : addDays(localDateKey(new Date()), offset);
-};
-
 export default function PlanScreen() {
   const journal = useJournal();
   const setJournal = useSetJournal();
-  const [now, setNow] = useNow();
+  const [now, sync] = useNow();
+  const toggleEntry = useToggleEntry(sync);
   const today = localDateKey(now);
   const nowMinutes = minutesOfDay(now);
 
   const [toggledIds, setToggledIds] = useState(() => new Set());
   const plan = useMemo(() => groupPlan(journal, today, toggledIds), [journal, today, toggledIds]);
 
-  const [composerText, setComposerText] = useState('');
-  const [composerDay, setComposerDay] = useState('today');
-  const composerRef = useRef(null);
-  // { key, kind: 'task' | 'habit', id (null = new), initial, fromComposer }
+  // { key, kind: 'task' | 'habit', id (null = new), initial, onSaved }
   const [sheet, setSheet] = useState(null);
   const sheetKey = useRef(0);
   const [alertConfig, setAlertConfig] = useState(null);
@@ -76,42 +63,36 @@ export default function PlanScreen() {
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const toggle = (id) => {
-    // The tick belongs to the real current day (also after midnight).
-    const tapTime = new Date();
     setToggledIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
-    setJournal(prev => toggleJournalEntry(prev, id, localDateKey(tapTime)));
-    setNow(tapTime);
+    toggleEntry(id);
   };
 
-  const submitComposer = () => {
-    const text = composerText.trim();
-    if (!text) return;
-    setJournal(prev => addTask(prev, { text, subject: '', priority: 'medium', date: composerDate(composerDay) }));
-    setComposerText('');
-    composerRef.current?.focus();
-  };
+  // Today at the moment of an action (also moves the screen to a new day).
+  const currentDay = () => localDateKey(sync());
 
-  const openSheet = (kind, entry, extra = {}) => {
+  const addFromComposer = (text, date) =>
+    setJournal(prev => addTask(prev, { text, subject: '', priority: 'medium', date }));
+
+  const openSheet = (kind, entry, onSaved) => {
+    sync(); // the sheet's "I dag" / "I morgen" use the current day
     sheetKey.current += 1;
-    setSheet({ key: sheetKey.current, kind, id: entry.id ?? null, initial: formFromEntry(entry), ...extra });
+    setSheet({ key: sheetKey.current, kind, id: entry.id ?? null, initial: formFromEntry(entry), onSaved });
   };
-  const openComposerDetails = () =>
-    openSheet('task', { text: composerText, date: composerDate(composerDay) }, { fromComposer: true });
 
   const saveSheet = (fields) => {
-    const { kind, id, fromComposer } = sheet;
+    const { kind, id, onSaved } = sheet;
     setJournal(prev => {
       if (kind === 'habit') return id === null ? addHabit(prev, fields) : updateHabit(prev, id, fields);
       return id === null ? addTask(prev, fields) : updateTask(prev, id, fields);
     });
-    if (fromComposer) setComposerText('');
+    onSaved?.();
     setSheet(null);
   };
 
   const confirmDelete = () => {
     const entry = journal.find(x => x.id === sheet.id);
     setAlertConfig({
-      title: t('taskForm.deleteTitle'),
+      title: t('taskForm.delete'),
       message: t('taskForm.deleteMessage', { title: entry?.text ?? '' }),
       buttons: [
         { text: t('taskForm.cancel'), style: 'cancel', onPress: closeAlert },
@@ -175,7 +156,7 @@ export default function PlanScreen() {
         <View style={styles.header}>
           <Text style={styles.date} accessibilityRole="header">{formatDateLong(today)}</Text>
           {todayTasks.length > 0 ? (
-            <Text style={styles.subline}>{t('today.progress', { done: todayDone, total: todayTasks.length })}</Text>
+            <Text style={styles.subline}>{t('task.progress', { done: todayDone, total: todayTasks.length })}</Text>
           ) : null}
         </View>
 
@@ -248,38 +229,11 @@ export default function PlanScreen() {
         )}
       </ScrollView>
 
-      {/* ── Composer: always visible; type and send to add a task. ── */}
-      <View style={styles.composer}>
-        <View style={styles.composerRow}>
-          <TextInput
-            ref={composerRef}
-            style={styles.composerInput}
-            placeholder={t('plan.composer.placeholder')}
-            placeholderTextColor={COLORS.textMuted}
-            value={composerText}
-            onChangeText={setComposerText}
-            onSubmitEditing={submitComposer}
-            returnKeyType="done"
-            accessibilityLabel={t('plan.composer.placeholder')}
-          />
-          <TouchableOpacity
-            onPress={submitComposer}
-            style={styles.sendBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('plan.composer.add')}
-          >
-            <Text style={styles.sendIcon}>↑</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always">
-          {COMPOSER_DAYS.map(d => (
-            <Choice key={d.id} label={t(d.label)} selected={composerDay === d.id} onPress={() => setComposerDay(d.id)} />
-          ))}
-          <TouchableOpacity onPress={openComposerDetails} style={styles.detailsBtn} accessibilityRole="button">
-            <Text style={styles.detailsText}>🕒 {t('plan.composer.details')}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+      <Composer
+        currentDay={currentDay}
+        onAdd={addFromComposer}
+        onDetails={(text, date, clear) => openSheet('task', { text, date }, clear)}
+      />
 
       {sheet ? (
         <TaskSheet
@@ -364,7 +318,7 @@ function HabitRow({ habit, today, onToggle, onOpen }) {
         style={styles.rowText}
         onPress={onOpen}
         accessibilityRole="button"
-        accessibilityLabel={[habit.text, summary, t('plan.week', { count: weekCount })].join(', ')}
+        accessibilityLabel={[habit.text, summary, streak > 0 ? t('plan.week', { count: weekCount }) : null].filter(Boolean).join(', ')}
         accessibilityHint={t('plan.openHint')}
       >
         <Text style={styles.rowTitle} numberOfLines={1}>{habit.icon ? `${habit.icon}  ` : ''}{habit.text}</Text>
@@ -421,21 +375,4 @@ const styles = StyleSheet.create({
   hint:         { fontSize: 13, color: COLORS.textMuted, marginBottom: 8 },
   clearAll:     { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   clearAllText: { fontSize: 15, color: COLORS.red },
-
-  composer: {
-    backgroundColor: COLORS.bg2, borderTopWidth: 1, borderTopColor: COLORS.border,
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: Platform.OS === 'ios' ? 16 : 8,
-  },
-  composerRow:   { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  composerInput: {
-    flex: 1, minHeight: 48, color: COLORS.text, fontSize: 16,
-    backgroundColor: COLORS.bg3, borderRadius: 12, paddingHorizontal: 14,
-  },
-  sendBtn:  {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.accentDim,
-    alignItems: 'center', justifyContent: 'center', marginLeft: 8,
-  },
-  sendIcon:    { color: COLORS.text, fontSize: 20, fontWeight: '700' },
-  detailsBtn:  { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  detailsText: { fontSize: 15, color: COLORS.text, fontWeight: '600' },
 });

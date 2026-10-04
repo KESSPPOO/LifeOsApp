@@ -16,7 +16,7 @@ export function CheckButton({ checked, onPress, label }) {
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       accessibilityLabel={label}
-      accessibilityHint={t(checked ? 'today.a11y.uncheckHint' : 'today.a11y.checkHint')}
+      accessibilityHint={t(checked ? 'task.a11y.uncheckHint' : 'task.a11y.checkHint')}
     >
       <View style={[styles.box, checked && styles.boxChecked]}>
         {checked ? <Text style={styles.mark}>✓</Text> : null}

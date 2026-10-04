@@ -31,7 +31,7 @@
 // screen does not change for that. No such items exist yet, and none are
 // invented here.
 import { groupJournal } from '../../data/tasks.js';
-import { scheduleStatus, compareStart } from '../tasks/schedule.js';
+import { scheduleStatus, compareStart, compareDateStart } from '../tasks/schedule.js';
 import { taskItem, habitItem } from '../tasks/items.js';
 import { addDays, isDateKey } from '../../core/time/dates.js';
 import { t, formatRelativeDay } from '../../core/i18n/index.js';
@@ -91,17 +91,22 @@ export function buildToday({ journal, goals, groceries, today, nowMinutes, keepV
   const groups = groupJournal(journal, today, keepVisibleIds);
   // (Parameters are named `task`, not `t`, which is the i18n lookup here.)
   const item = (task) => taskItem(task, today, nowMinutes);
-  const statusOf = (task) => scheduleStatus(task, today, nowMinutes);
   const due = [...groups.Overdue, ...groups.Today];
-  const dueOpen = due.filter(task => !task.done);
   const dueDone = due.filter(task => task.done);
-  const byDateThenStart = (a, b) => a.date.localeCompare(b.date) || compareStart(a, b);
-  const active = dueOpen.filter(task => statusOf(task) === 'active').sort(byDateThenStart);
-  const upcomingTimed = dueOpen.filter(task => statusOf(task) === 'upcoming').sort(compareStart);
-  const flexible = rankDueTasks(dueOpen.filter(task => !active.includes(task) && !upcomingTimed.includes(task)));
+  const active = [];
+  const upcomingTimed = [];
+  const flexibleOpen = [];
+  for (const task of due) {
+    if (task.done) continue;
+    const status = scheduleStatus(task, today, nowMinutes);
+    (status === 'active' ? active : status === 'upcoming' ? upcomingTimed : flexibleOpen).push(task);
+  }
+  active.sort(compareDateStart);
+  upcomingTimed.sort(compareStart);
+  const flexible = rankDueTasks(flexibleOpen);
   const habits = groups.Habits.map(h => habitItem(h, today));
   const habitsDone = habits.filter(h => h.done).length;
-  const laterDay = groups.Upcoming.filter(task => !task.done).sort(byDateThenStart)[0];
+  const laterDay = groups.Upcoming.filter(task => !task.done).sort(compareDateStart)[0];
 
   const queue = [...active.map(item), ...flexible.map(item), ...habits.filter(h => !h.done)];
   const now = queue[0] ?? null;

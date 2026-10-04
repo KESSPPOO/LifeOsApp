@@ -82,14 +82,6 @@ export function fmtTimer(totalSec) {
   return `${padTime(h)}:${padTime(m)}:${padTime(s)}`;
 }
 
-export function last7Days() {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - 6 + i);
-    return localDateKey(d);
-  });
-}
-
 export function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);

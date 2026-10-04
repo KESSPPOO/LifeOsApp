@@ -7,6 +7,7 @@ import {
   REST_LIMIT, GOAL_ATTENTION_DAYS,
 } from '../src/features/today/logic.js';
 import { describeItem } from '../src/features/tasks/items.js';
+import { timeToMinutes } from '../src/core/time/timeOfDay.js';
 import { toggleJournalEntry } from '../src/data/tasks.js';
 
 const TODAY = '2026-10-03'; // Saturday
@@ -115,7 +116,7 @@ test('ticking NU moves NÆSTE up (the selection follows the data)', () => {
 
 // ── Scheduled tasks ────────────────────────────────────────────────────────
 
-const at = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+const at = timeToMinutes;
 const timed = (id, startTime, durationMinutes, extra = {}) =>
   ({ ...task(id, TODAY, extra.priority ?? 'medium', extra.done ?? false), startTime, ...(durationMinutes ? { durationMinutes } : {}) });
 

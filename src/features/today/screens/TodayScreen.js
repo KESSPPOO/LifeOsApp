@@ -15,12 +15,11 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
 import { Card } from '../../../components/Card';
 import { LinkRow } from '../../../components/LinkRow';
-import { toggleJournalEntry } from '../../../data/tasks';
 import { t, formatDateLong } from '../../../core/i18n';
 import { localDateKey, isoWeekNumber } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
-import { useJournal, useSetJournal } from '../../tasks/store';
+import { useJournal, useToggleEntry } from '../../tasks/store';
 import { useGoals } from '../../goals/store';
 import { useGroceries } from '../../groceries/store';
 import { CheckButton } from '../../../components/CheckButton';
@@ -38,11 +37,11 @@ const displayTitle = (item) => (item.icon ? `${item.icon}  ${item.title}` : item
 export default function TodayScreen({ userName }) {
   const navigation = useNavigation();
   const journal = useJournal();
-  const setJournal = useSetJournal();
   const goals = useGoals();
   const groceries = useGroceries();
 
-  const [now, setNow] = useNow();
+  const [now, sync] = useNow();
+  const toggleEntry = useToggleEntry(sync);
   const today = localDateKey(now);
   const nowMinutes = minutesOfDay(now);
   // Tasks ticked during this visit stay visible (dimmed), so a tap can be
@@ -54,14 +53,10 @@ export default function TodayScreen({ userName }) {
   );
 
   const toggle = (item) => {
-    // A habit tick belongs to the real current day, even if the screen
-    // was rendered before midnight; the screen then refreshes to that day.
-    const tapTime = new Date();
     if (item.kind === 'task') {
       setKeepVisibleIds(prev => (prev.has(item.id) ? prev : new Set(prev).add(item.id)));
     }
-    setJournal(prev => toggleJournalEntry(prev, item.id, localDateKey(tapTime)));
-    setNow(tapTime);
+    toggleEntry(item.id);
   };
 
   const greeting = t(greetingKey(now.getHours()));
@@ -92,7 +87,7 @@ export default function TodayScreen({ userName }) {
         </Card>
       )}
       {day.total > 0 ? (
-        <Text style={styles.progress}>{t('today.progress', { done: day.done, total: day.total })}</Text>
+        <Text style={styles.progress}>{t('task.progress', { done: day.done, total: day.total })}</Text>
       ) : null}
 
       {day.next ? (

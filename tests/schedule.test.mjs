@@ -7,9 +7,10 @@ import {
   isTimeOfDay, timeToMinutes, minutesToTime, minutesOfDay, parseTimeInput,
 } from '../src/core/time/timeOfDay.js';
 import {
-  getSchedule, isTimed, endTime, scheduleStatus, compareStart, scheduleLabel, withSchedule,
+  getSchedule, isTimed, endTime, scheduleStatus, compareStart, compareDateStart, withSchedule,
   isValidDuration, DURATION_CHOICES,
 } from '../src/features/tasks/schedule.js';
+import { scheduleLabel } from '../src/features/tasks/items.js';
 import { formatDuration } from '../src/core/i18n/index.js';
 import { toggleJournalEntry } from '../src/data/tasks.js';
 import { updateTask } from '../src/features/plan/logic.js';
@@ -131,6 +132,14 @@ test('compareStart orders by time, untimed last, ties keep list order', () => {
   assert.deepEqual([...list].sort(compareStart).map(x => x.id), [3, 5, 2, 1, 4, 6]);
 });
 
+test('compareDateStart: date first, then time', () => {
+  const list = [
+    task({ id: 1, date: '2026-10-04' }), task({ id: 2, date: '2026-10-04', startTime: '09:00' }),
+    task({ id: 3, startTime: '20:00' }), task({ id: 4 }),
+  ];
+  assert.deepEqual([...list].sort(compareDateStart).map(x => x.id), [3, 4, 2, 1]);
+});
+
 test('scheduleLabel', () => {
   assert.equal(scheduleLabel(task({ startTime: '10:45', durationMinutes: 60 })), '10:45 · 1 time');
   assert.equal(scheduleLabel(task({ startTime: '10:45', durationMinutes: 90 })), '10:45 · 1,5 time');
@@ -147,6 +156,10 @@ test('withSchedule stores only valid values and removes the rest', () => {
   assert.ok(!('startTime' in cleared) && !('durationMinutes' in cleared));
   // Invalid input is never stored.
   assert.deepEqual(withSchedule(task(), { startTime: '25:00', durationMinutes: -5 }), task());
+  // A time is never stored on an undated task or a habit.
+  assert.deepEqual(withSchedule(task({ date: null }), { startTime: '10:45', durationMinutes: 30 }), task({ date: null }));
+  const habitLike = { ...task(), recurring: true };
+  assert.deepEqual(withSchedule(habitLike, { startTime: '10:45' }), habitLike);
   // An untimed task stays free of schedule keys.
   assert.deepEqual(Object.keys(withSchedule(task(), {})).sort(), Object.keys(task()).sort());
 });

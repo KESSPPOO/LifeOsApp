@@ -52,26 +52,28 @@ export const da = {
   'today.allDone.body':  'Resten af dagen er din.',
   'today.goToPlan':      'Gå til Plan',
 
-  'today.progress': '{done} af {total} klaret i dag',
   'today.rest':     'Resten af dagen',
   'today.habits':   'Vaner',
   'today.goals':    'Mål med frist snart',
   'today.restMore': { one: '{count} opgave mere i Plan', other: '{count} opgaver mere i Plan' },
   'today.shopping': '{count} ting på indkøbslisten',
 
-  'today.meta.activeUntil': 'I gang til {time}',
-  'today.meta.timePassed':  'Tidspunktet er passeret',
-  'today.meta.carriedOver': 'Fra {day}',
-  'today.meta.planned':     'Planlagt til {day}',
-  'today.meta.important':   'Vigtig',
-  'today.meta.habit':       'Vane',
 
   'today.goal.due':      'Frist {day}',
   'today.goal.passed':   'Fristen er passeret',
   'today.goal.progress': '{progress} af {target}',
 
-  'today.a11y.checkHint':   'Markerer som klaret',
-  'today.a11y.uncheckHint': 'Fortryder markeringen',
+
+  // ── Tasks and habits (shared by I dag and Plan) ──────────────────────
+  'task.meta.activeUntil': 'I gang til {time}',
+  'task.meta.timePassed':  'Tidspunktet er passeret',
+  'task.meta.carriedOver': 'Fra {day}',
+  'task.meta.planned':     'Planlagt til {day}',
+  'task.meta.important':   'Vigtig',
+  'task.meta.habit':       'Vane',
+  'task.progress':         '{done} af {total} klaret i dag',
+  'task.a11y.checkHint':   'Markerer som klaret',
+  'task.a11y.uncheckHint': 'Fortryder markeringen',
 
   // ── Plan ──────────────────────────────────────────────────────────────
   'plan.today':       'I dag',
@@ -85,7 +87,6 @@ export const da = {
   'plan.addHabit':    'Ny vane',
   'plan.empty':       'Ingen opgaver endnu. Skriv en herunder, når du er klar.',
   'plan.reorderHint': 'Hold og træk for at ændre rækkefølgen',
-  'plan.active':      'I gang',
   'plan.openHint':    'Åbner for at redigere',
   'plan.streak':      { one: '{count} dag i træk', other: '{count} dage i træk' },
   'plan.week':        '{count} af de sidste 7 dage',
@@ -95,7 +96,6 @@ export const da = {
 
   'plan.composer.placeholder': 'Tilføj en opgave …',
   'plan.composer.add':         'Tilføj opgave',
-  'plan.composer.date':        'Dato: {day}',
   'plan.composer.details':     'Tidspunkt og mere',
 
   // ── Task form (Plan) ──────────────────────────────────────────────────
@@ -120,15 +120,13 @@ export const da = {
   'taskForm.durationUnknown': 'Ved ikke',
   'taskForm.durationCustom':  'Andet',
   'taskForm.durationMinutes': 'Minutter',
-  'taskForm.durationInvalid': 'Skriv et helt antal minutter fra 1 til 1440.',
+  'taskForm.durationInvalid': 'Skriv et helt antal minutter fra 1 til {max}.',
   'taskForm.priority':  'Prioritet',
   'taskForm.save':      'Gem',
   'taskForm.create':    'Opret',
   'taskForm.cancel':    'Annuller',
   'taskForm.delete':    'Slet',
-  'taskForm.ok':        'OK',
   'taskForm.missingTitle':  'Skriv, hvad det drejer sig om.',
-  'taskForm.deleteTitle':   'Slet',
   'taskForm.deleteMessage': 'Vil du slette »{title}«?',
 
   'priority.low':    'Lav',

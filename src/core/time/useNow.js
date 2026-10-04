@@ -5,7 +5,11 @@
 // when the app returns to the foreground. Screens mount only while focused
 // (AppNavigator), so the timer runs only for the visible screen. The pure
 // logic receives this value; it never reads the clock itself.
-import { useEffect, useState } from 'react';
+//
+// Returns [now, sync]. sync() reads the clock for an action (a tap, a new
+// task), updates the screen to it and returns it, so an action after
+// midnight uses the new day even if the minute tick has not run yet.
+import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 const MINUTE = 60 * 1000;
@@ -23,5 +27,10 @@ export function useNow() {
     const sub = AppState.addEventListener('change', (s) => { if (s === 'active') refresh(); });
     return () => { clearTimeout(timeout); clearInterval(interval); sub.remove(); };
   }, []);
-  return [now, setNow];
+  const sync = useCallback(() => {
+    const date = new Date();
+    setNow(date);
+    return date;
+  }, []);
+  return [now, sync];
 }

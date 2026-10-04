@@ -21,7 +21,7 @@ import { DatePicker } from '../../../components/DatePicker';
 import { t, formatDuration } from '../../../core/i18n';
 import { addDays } from '../../../core/time/dates';
 import { parseTimeInput } from '../../../core/time/timeOfDay';
-import { DURATION_CHOICES } from '../../tasks/schedule';
+import { DURATION_CHOICES, MAX_DURATION_MINUTES } from '../../tasks/schedule';
 import { readTaskForm } from '../logic';
 import { Choice } from './Choice';
 
@@ -200,7 +200,7 @@ export function TaskSheet({ kind, editing, initial, today, onSave, onDelete, onC
               </>
             )}
 
-            {error ? <Text style={styles.error} accessibilityRole="alert">{t(error)}</Text> : null}
+            {error ? <Text style={styles.error} accessibilityRole="alert">{t(error, { max: MAX_DURATION_MINUTES })}</Text> : null}
 
             <View style={styles.buttons}>
               {editing ? (

@@ -11,7 +11,7 @@ import { repoPath, sourceFiles } from './fixtures.mjs';
 
 test('t() looks up, fills placeholders and picks plural forms', () => {
   assert.equal(t('nav.today'), 'I dag');
-  assert.equal(t('today.progress', { done: 2, total: 5 }), '2 af 5 klaret i dag');
+  assert.equal(t('task.progress', { done: 2, total: 5 }), '2 af 5 klaret i dag');
   assert.equal(t('today.restMore', { count: 1 }), '1 opgave mere i Plan');
   assert.equal(t('today.restMore', { count: 3 }), '3 opgaver mere i Plan');
   assert.equal(t('today.restMore', { count: 0 }), '0 opgaver mere i Plan');

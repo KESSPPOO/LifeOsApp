@@ -63,9 +63,10 @@ src/
   features/today/      I dag: logic.js (NU/NÆSTE + overview, pure), screens/TodayScreen.js.
                        Reads tasks, goals, groceries stores
   features/plan/       Plan (route `journal`): logic.js (grouping, list operations, task
-                       form validation, pure), screens/PlanScreen.js, components/TaskSheet.js
-                       + Choice.js
-  features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal;
+                       form validation, pure), screens/PlanScreen.js, components/TaskSheet.js,
+                       Composer.js, Choice.js
+  features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal /
+                       useToggleEntry (ticks on the real current day);
                        schedule.js: optional startTime/durationMinutes (ADR-006);
                        items.js: the task/habit item + Danish description shared by I dag
                        and Plan (grouping/streaks in src/data/tasks.js)

@@ -9,7 +9,7 @@ import { formatNumber } from './format.js';
 export * from './format.js';
 
 /**
- * t('today.progress', { done: 2, total: 5 }) -> '2 af 5 klaret i dag'.
+ * t('task.progress', { done: 2, total: 5 }) -> '2 af 5 klaret i dag'.
  * Numbers in params are formatted the Danish way. A { one, other } entry is
  * picked by params.count. An unknown key returns the key itself, so a typo
  * shows up on screen instead of crashing (tests check every used key).

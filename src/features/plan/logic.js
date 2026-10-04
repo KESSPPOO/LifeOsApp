@@ -19,7 +19,7 @@
 // Sorting is stable everywhere: equal keys keep the stored order.
 import { groupJournal } from '../../data/tasks.js';
 import {
-  isTimed, compareStart, withSchedule, getSchedule, isValidDuration, DURATION_CHOICES,
+  isTimed, compareStart, compareDateStart, withSchedule, getSchedule, isValidDuration, DURATION_CHOICES,
 } from '../tasks/schedule.js';
 import { parseTimeInput } from '../../core/time/timeOfDay.js';
 
@@ -30,6 +30,9 @@ export function groupPlan(journal, today, keepVisibleIds) {
 
   const upcoming = [...groups.Upcoming].sort((a, b) =>
     a.date.localeCompare(b.date) || doneLast(a, b) || compareStart(a, b));
+  const timedToday = [];
+  const flexibleToday = [];
+  for (const task of groups.Today) (isTimed(task) ? timedToday : flexibleToday).push(task);
   const upcomingDays = [];
   for (const task of upcoming) {
     const day = upcomingDays.at(-1);
@@ -38,10 +41,9 @@ export function groupPlan(journal, today, keepVisibleIds) {
   }
 
   return {
-    timedToday: groups.Today.filter(isTimed).sort(compareStart),
-    flexibleToday: groups.Today.filter(task => !isTimed(task)),
-    overdue: [...groups.Overdue].sort((a, b) =>
-      doneLast(a, b) || a.date.localeCompare(b.date) || compareStart(a, b)),
+    timedToday: timedToday.sort(compareStart),
+    flexibleToday,
+    overdue: [...groups.Overdue].sort((a, b) => doneLast(a, b) || compareDateStart(a, b)),
     upcomingDays,
     noDate: groups['No Date'],
     habits: groups.Habits,
@@ -56,13 +58,12 @@ const nextId = (list) => Math.max(0, ...list.map(x => Number(x.id) || 0)) + 1;
 
 /**
  * The form's task fields: { text, subject, priority, date, startTime,
- * durationMinutes }. date '' or null = no date. A time is only stored on a
- * dated task, and schedule fields without a value are not stored at all
- * (withSchedule), so a task saved without a time has no schedule keys.
+ * durationMinutes }. date '' or null = no date. withSchedule stores a time
+ * only on a dated task and never stores empty schedule fields, so a task
+ * saved without a time has no schedule keys.
  */
 function taskFields(base, { text, subject, priority, date, startTime, durationMinutes }) {
-  const next = { ...base, text, subject, priority, date: date || null };
-  return withSchedule(next, next.date ? { startTime, durationMinutes } : {});
+  return withSchedule({ ...base, text, subject, priority, date: date || null }, { startTime, durationMinutes });
 }
 
 export function addTask(list, fields) {
