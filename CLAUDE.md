@@ -28,8 +28,8 @@ prototype.**
 |---|---|
 | Runtime | Expo SDK 54, React Native 0.81.5, React 19.1, New Architecture on, Hermes |
 | Language | JavaScript (ES modules, JSX). `typescript` is a devDependency but there is no `tsconfig.json` and no `.ts` file |
-| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Tidshjul · Plan · Mere** (ADR-005, ADR-007); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer (Kalender too, also linked from Plan; ADR-009). The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
-| State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links, routines + routineLog) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
+| Navigation | React Navigation 7: one flat bottom-tab navigator (`src/app/navigation/AppNavigator.js`, ADR-004). Bottom bar **I dag · Tidshjul · Plan · Træning · Mere** (ADR-005, ADR-007, ADR-010); Træning's own screens have `parent: 'training'` (highlight Træning, not on Mere); every other screen is listed on Mere (`MoreScreen`), which replaced the drawer (Kalender too, also linked from Plan; ADR-009). The top bar is the navigator's `layout` (`ShellLayout`), the bottom bar its `tabBar` (`BottomNav`), and Back uses `backBehavior: 'fullHistory'`. Routes, Danish labels, icons, tabs and Mere groups live in `src/config/nav.js`. The app starts on I dag (`today`) |
+| State | **Mid-migration (ADR-001, ADR-003).** All list modules (tasks/habits = `journal`, groceries, goals, notes, links, routines + routineLog, training: exercises, workoutTemplates, activeWorkout, workoutSessions) live in Zustand stores built with the shared `createPersistedListStore` (`src/core/state/`); screens read them with hooks. `App.js` still owns profile/onboarding, Home tips, exams, finances and the dead study-timer data (`useState`, passed as props) |
 | Persistence | AsyncStorage through the versioned engine in `src/core/storage/` (key prefix `lifeos_`, `schemaVersion` plus migrations; ADR-002). Each collection is still one JSON blob in its original format. `src/data/storage.js` `saveJSON` is the legacy write path for `App.js`-owned sections |
 | Styling | `StyleSheet.create` per file, colour tokens in `src/config/colors.js`, dark UI only |
 | Auth (optional) | Firebase Auth (anonymous plus Google One Tap). Disabled unless `EXPO_PUBLIC_FIREBASE_API_KEY` is set; without it the onboarding Google button is hidden. Nothing is synced |
@@ -53,6 +53,7 @@ src/
                        MoreScreen (Mere: every non-tab screen, grouped)
   core/i18n/           da.js (Danish strings) + t() (index.js); format.js: da-DK dates,
                        numbers, DKK (hand-written, not Intl: same output on every device)
+  core/id.js           newId(): time + random ids for records that refer to each other
   core/time/           dates.js: localDateKey (home of it) + local 'YYYY-MM-DD' arithmetic,
                        Monday-first weeks, ISO week; timeOfDay.js: 'HH:mm' parsing and
                        arithmetic; useNow.js: the one React hook here (minute tick + resume)
@@ -78,6 +79,14 @@ src/
                        (mode + selected-date reducer, weeks, time window, Dag/Uge models,
                        screen-reader text; pure), screens/CalendarScreen.js,
                        components/DayGrid.js, WeekStrip.js, ScheduleRow.js. A view; persists nothing
+  features/training/    Træning (tab `training`; screens workout, exercises, workoutTemplate,
+                       trainingHistory; ADR-010): exercises.js (library model, search/filter,
+                       form), sets.js (what a set logs per tracking type, Danish input),
+                       templates.js (planned sets, editor form), session.js (snapshot, set
+                       logging, undo, skip, Alternativ, rest deadline, finish), history.js
+                       (Sidst, field suggestions), workouts.js (start/finish/discard rules
+                       across stores), store.js (four lists), useRestClock.js,
+                       useExerciseEditor.js, screens/, components/. No cross-domain effects
   features/routines/   Rutiner (route `routines`, Mere → Livet; ADR-008): model.js (weekly
                        recurrence, derived occurrences, per-date completion log, form; pure),
                        store.js (routines + routineLog), useRoutineChecklist.js (the daily
@@ -255,7 +264,14 @@ Things that are easy to get wrong:
   tasks and routines itself, so the views never disagree on items or
   overlaps. Nothing in a view is stored: no event store, no generated days.
 - Routines are templates; occurrences are derived per date and only the
-  per-date completion (`routineLog`) is stored (ADR-008). Tasks are edited only
+  per-date completion (`routineLog`) is stored (ADR-008).
+- Training keeps exercise DEFINITIONS, TEMPLATES (plans), the workout IN
+  PROGRESS and HISTORY apart (ADR-010). A started workout is a snapshot:
+  never read results from or write them to a template or an exercise. Set
+  taps write only `activeWorkout`; history is appended once, on finish,
+  before the workout in progress is cleared. The rest timer is a stored
+  deadline, never a running interval in state. Training creates no tasks,
+  calendar items or Tidshjul blocks. Tasks are edited only
   through `useEntryEditor` (one sheet, one save/delete path).
 - Times of day are local `'HH:mm'` strings (`src/core/time/timeOfDay.js`).
   No timestamps or UTC for planning; pure logic gets "now" passed in

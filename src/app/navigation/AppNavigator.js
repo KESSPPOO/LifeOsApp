@@ -2,10 +2,10 @@
 //
 // The app's navigation: one bottom-tab navigator holding every route in
 // src/config/nav.js as siblings (ADR-004). ShellLayout (top bar) wraps the
-// navigator, BottomNav is its tab bar (I dag · Tidshjul · Plan · Mere,
-// ADR-005/007), and
+// navigator, BottomNav is its tab bar (I dag · Tidshjul · Plan · Træning ·
+// Mere, ADR-005/007/010), and
 // Android Back walks the full switch history (BACK_BEHAVIOR). Screens that
-// are not tabs are opened from Mere.
+// are not tabs are opened from Mere, or from their parent tab (Træning).
 import React from 'react';
 import { NavigationContainer, DarkTheme, useIsFocused } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -28,6 +28,11 @@ import PlanScreen       from '../../features/plan/screens/PlanScreen';
 import TimewheelScreen  from '../../features/timewheel/screens/TimewheelScreen';
 import RoutinesScreen   from '../../features/routines/screens/RoutinesScreen';
 import CalendarScreen   from '../../features/calendar/screens/CalendarScreen';
+import TrainingScreen   from '../../features/training/screens/TrainingScreen';
+import WorkoutScreen    from '../../features/training/screens/WorkoutScreen';
+import ExercisesScreen  from '../../features/training/screens/ExercisesScreen';
+import TemplateEditorScreen from '../../features/training/screens/TemplateEditorScreen';
+import TrainingHistoryScreen from '../../features/training/screens/TrainingHistoryScreen';
 import MoreScreen       from './MoreScreen';
 
 const Tab = createBottomTabNavigator();
@@ -66,6 +71,11 @@ export function AppNavigator({ legacyProps }) {
         <Tab.Screen name="timewheel" component={TimewheelScreen} />
         <Tab.Screen name="routines" component={RoutinesScreen} />
         <Tab.Screen name="calendar" component={CalendarScreen} />
+        <Tab.Screen name="training" component={TrainingScreen} />
+        <Tab.Screen name="workout" component={WorkoutScreen} />
+        <Tab.Screen name="exercises" component={ExercisesScreen} />
+        <Tab.Screen name="workoutTemplate" component={TemplateEditorScreen} />
+        <Tab.Screen name="trainingHistory" component={TrainingHistoryScreen} />
         <Tab.Screen name="more" component={MoreScreen} />
         <Tab.Screen name="home">{() => <HomeScreen {...legacyProps.home} />}</Tab.Screen>
         <Tab.Screen name="uni">{() => <UniScreen {...legacyProps.uni} />}</Tab.Screen>

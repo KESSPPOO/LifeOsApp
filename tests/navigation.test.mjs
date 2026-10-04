@@ -18,9 +18,9 @@ const ROUTES = NAV.map(n => n.id);
 
 const LEGACY_ROUTES = ['home', 'uni', 'journal', 'finances', 'stats', 'groceries', 'goals', 'notes', 'links'];
 
-test('every pre-ADR-005 route id still exists (no renames); today, timewheel, more, routines and calendar are new', () => {
+test('every pre-ADR-005 route id still exists (no renames); the LifeOS routes are new', () => {
   for (const id of LEGACY_ROUTES) assert.ok(ROUTES.includes(id), id);
-  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'more', 'routines', 'calendar']);
+  assert.deepEqual(ROUTES.filter(id => !LEGACY_ROUTES.includes(id)), ['today', 'timewheel', 'training', 'more', 'workout', 'exercises', 'workoutTemplate', 'trainingHistory', 'routines', 'calendar']);
   assert.equal(new Set(ROUTES).size, ROUTES.length, 'unique');
 });
 
@@ -28,9 +28,9 @@ test('the app starts on I dag', () => {
   assert.equal(INITIAL_ROUTE, 'today');
 });
 
-test('bottom bar is I dag · Tidshjul · Plan · Mere (ADR-005, ADR-007)', () => {
-  assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'timewheel', 'journal', 'more']);
-  assert.deepEqual(TAB_ITEMS.map(n => n.label), ['I dag', 'Tidshjul', 'Plan', 'Mere']);
+test('bottom bar is I dag · Tidshjul · Plan · Træning · Mere (ADR-005, ADR-007, ADR-010)', () => {
+  assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'timewheel', 'journal', 'training', 'more']);
+  assert.deepEqual(TAB_ITEMS.map(n => n.label), ['I dag', 'Tidshjul', 'Plan', 'Træning', 'Mere']);
 });
 
 test('University, Finances, Links and the old Home are not primary', () => {
@@ -40,10 +40,14 @@ test('University, Finances, Links and the old Home are not primary', () => {
   }
 });
 
-test('every non-tab route is listed on Mere exactly once (nothing unreachable)', () => {
+test('every non-tab route is listed on Mere exactly once or belongs to a tab (nothing unreachable)', () => {
   const listed = MORE_SECTIONS.flatMap(s => s.items.map(n => n.id));
   assert.equal(new Set(listed).size, listed.length, 'no duplicates');
-  assert.deepEqual([...listed].sort(), NAV.filter(n => !n.tab).map(n => n.id).sort());
+  assert.deepEqual([...listed].sort(), NAV.filter(n => !n.tab && !n.parent).map(n => n.id).sort());
+  for (const n of NAV.filter(x => x.parent)) {
+    assert.ok(TAB_ITEMS.some(tab => tab.id === n.parent), `${n.id}: parent ${n.parent} is a tab`);
+    assert.ok(!n.section && !n.tab, `${n.id}: a parent route is neither on Mere nor a tab`);
+  }
   for (const s of MORE_SECTIONS) assert.ok(s.items.length > 0, `${s.id} is not empty`);
   assert.deepEqual(MORE_SECTIONS.map(s => s.id), ['life', 'tools', 'legacy']);
   assert.deepEqual(MORE_SECTIONS.find(s => s.id === 'legacy').items.map(n => n.id), ['uni', 'home']);
@@ -53,7 +57,7 @@ test('every route has a Danish label and an icon; tabs highlight themselves', ()
   for (const n of NAV) {
     assert.ok(n.label && !n.label.startsWith('nav.'), `${n.id} label resolved`);
     assert.ok(n.icon, `${n.id} icon`);
-    assert.ok(n.tab || n.section, `${n.id} is a tab or in a Mere section`);
+    assert.ok(n.tab || n.section || n.parent, `${n.id} is a tab, in a Mere section or under a tab`);
   }
   for (const n of TAB_ITEMS) assert.equal(tabFor(n.id), n.id);
 });
@@ -126,7 +130,7 @@ test('Back walks every switch, duplicates included (same as the old manual histo
 test('Rutiner is secondary: on Mere under Livet (not a tab, not legacy), and Back returns from it', () => {
   assert.equal(tabFor('routines'), 'more');
   assert.deepEqual(MORE_SECTIONS.find(s => s.id === 'life').items[0].id, 'routines');
-  assert.equal(TAB_ITEMS.length, 4, 'no new tab');
+  assert.ok(!TAB_ITEMS.some(n => n.id === 'routines'), 'not a tab');
   const nav = createNav();
   nav.navigate('journal');
   nav.navigate('routines');
@@ -136,7 +140,7 @@ test('Rutiner is secondary: on Mere under Livet (not a tab, not legacy), and Bac
 test('Kalender is secondary: on Mere under Livet and linked from Plan, no new tab; Back returns from it (ADR-009)', () => {
   assert.equal(tabFor('calendar'), 'more');
   assert.deepEqual(MORE_SECTIONS.find(s => s.id === 'life').items.map(n => n.id).slice(0, 2), ['routines', 'calendar']);
-  assert.deepEqual(TAB_ITEMS.map(n => n.id), ['today', 'timewheel', 'journal', 'more'], 'no new tab');
+  assert.ok(!TAB_ITEMS.some(n => n.id === 'calendar'), 'not a tab');
   assert.equal(NAV.find(n => n.id === 'calendar').label, 'Kalender');
   const plan = readFileSync(repoPath('../src/features/plan/screens/PlanScreen.js'), 'utf8');
   assert.match(plan, /navigate\('calendar'\)/);
@@ -144,6 +148,24 @@ test('Kalender is secondary: on Mere under Livet and linked from Plan, no new ta
   nav.navigate('journal');
   nav.navigate('calendar');
   assert.deepEqual([nav.back(), nav.back(), nav.back()], ['journal', 'today', 'EXIT']);
+});
+
+test('Træning is a tab; its screens highlight it, are not on Mere, and Back walks back through them (ADR-010)', () => {
+  assert.equal(tabFor('training'), 'training');
+  for (const id of ['workout', 'exercises', 'workoutTemplate', 'trainingHistory']) assert.equal(tabFor(id), 'training', id);
+  const onMere = MORE_SECTIONS.flatMap(s => s.items.map(n => n.id));
+  assert.ok(!onMere.some(id => ['training', 'workout', 'exercises', 'workoutTemplate', 'trainingHistory'].includes(id)));
+  const nav = createNav();
+  nav.navigate('training');
+  nav.navigate('workout');
+  nav.navigate('today'); // the workout keeps going elsewhere
+  nav.navigate('training');
+  assert.deepEqual([nav.back(), nav.back(), nav.back(), nav.back()], ['today', 'workout', 'training', 'today']);
+});
+
+test('Back with no history from a Træning screen goes to Træning, not Mere', () => {
+  const shell = readFileSync(repoPath('../src/app/navigation/ShellLayout.js'), 'utf8');
+  assert.match(shell, /navigation\.navigate\(tabFor\(current\)\)/);
 });
 
 test('Tidshjul is a tab: reachable directly, and Back returns from it', () => {

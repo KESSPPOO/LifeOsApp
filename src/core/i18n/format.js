@@ -115,3 +115,26 @@ export function formatDuration(minutes) {
   return `${Math.floor(minutes / 60)} t ${minutes % 60} min`;
 }
 
+
+/**
+ * Reads a number typed the Danish way: '62,5' (or '62.5', '62') -> 62.5.
+ * Whole and decimal part only (no thousands separators, no sign, at most
+ * `maxDecimals` decimals, so '1.250' is refused rather than read as 1,25).
+ * The digits are parsed as written, so no precision is lost beyond the
+ * nearest double. Anything else -> null.
+ */
+export function parseDecimalInput(text, maxDecimals = 2) {
+  const trimmed = String(text ?? '').trim();
+  const match = /^(\d+)(?:[.,](\d+))?$/.exec(trimmed);
+  if (!match || (match[2] ?? '').length > maxDecimals) return null;
+  return Number(match[2] ? `${match[1]}.${match[2]}` : match[1]);
+}
+
+/** A count of seconds on a clock: 75 -> '1:15', 3605 -> '1:00:05' (never negative). */
+export function formatTimer(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const pad = (n) => String(n).padStart(2, '0');
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(s % 60)}` : `${minutes}:${pad(s % 60)}`;
+}

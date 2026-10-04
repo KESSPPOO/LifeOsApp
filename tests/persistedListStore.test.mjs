@@ -12,6 +12,7 @@ import {
   JOURNAL_TEST_SEED, GROCERIES_TEST_SEED, GOALS_TEST_SEED, NOTES_TEST_SEED, LINKS_TEST_SEED,
   parsed, raw, setupListStore, failReadsOf, failWritesOf,
   STORED_ROUTINES, STORED_ROUTINE_LOG, ROUTINES_TEST_SEED,
+  STORED_EXERCISES, STORED_TEMPLATES, STORED_ACTIVE_WORKOUT, STORED_WORKOUT_SESSIONS,
 } from './fixtures.mjs';
 
 const MODULES = [
@@ -24,6 +25,11 @@ const MODULES = [
   { name: 'routines', key: KEYS.routines, stored: STORED_ROUTINES, seed: ROUTINES_TEST_SEED },
   // Log entries have no id: they are identified by routine + date.
   { name: 'routineLog', key: KEYS.routineLog, stored: STORED_ROUTINE_LOG, seed: [], idOf: x => `${x.routineId}@${x.date}` },
+  // Training (Session 11): new keys, empty by default.
+  { name: 'exercises', key: KEYS.exercises, stored: STORED_EXERCISES, seed: [] },
+  { name: 'workoutTemplates', key: KEYS.workoutTemplates, stored: STORED_TEMPLATES, seed: [] },
+  { name: 'activeWorkout', key: KEYS.activeWorkout, stored: STORED_ACTIVE_WORKOUT, seed: [] },
+  { name: 'workoutSessions', key: KEYS.workoutSessions, stored: STORED_WORKOUT_SESSIONS, seed: [] },
 ];
 
 for (const { name, key, stored, seed, idOf = x => x.id } of MODULES) {

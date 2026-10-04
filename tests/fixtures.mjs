@@ -87,6 +87,39 @@ export const STORED_ROUTINE_LOG = [
   { routineId: 'r1', date: '2026-03-02', completedStepIds: ['s1', 's2'] },
   { routineId: 'r2', date: '2026-03-01', completedStepIds: ['a1'] },
 ];
+// Training (Session 11): test examples only; the app starts with an empty
+// library and no templates.
+export const STORED_EXERCISES = [
+  { id: 'bench', name: 'Bænkpres', category: 'strength', muscleGroups: ['chest', 'triceps'], equipment: 'barbell', trackingType: 'weightReps', custom: true },
+  { id: 'pullup', name: 'Pull-ups', category: 'calisthenics', muscleGroups: ['back', 'biceps'], equipment: 'bodyweight', trackingType: 'bodyweightReps', custom: true },
+  { id: 'plank', name: 'Planke', category: 'core', muscleGroups: ['core'], equipment: 'bodyweight', trackingType: 'duration', instructions: 'Spænd maven.', custom: true },
+  { id: 'run', name: 'Løb', category: 'cardio', muscleGroups: ['fullBody'], equipment: 'other', trackingType: 'distanceDuration', custom: true },
+];
+export const STORED_TEMPLATES = [
+  { id: 'upper', name: 'Overkrop A', rest: { warmup: 60, work: 180 }, exercises: [
+    { id: 'e1', exerciseId: 'bench', sets: [{ id: 'w1', type: 'warmup' }, { id: 's1', type: 'work', targetReps: 8, targetWeightKg: 62.5 }, { id: 's2', type: 'work', targetReps: 8, targetWeightKg: 62.5 }] },
+    { id: 'e2', exerciseId: 'pullup', sets: [{ id: 's1', type: 'work' }, { id: 's2', type: 'work' }] },
+  ] },
+];
+export const STORED_WORKOUT_SESSIONS = [
+  { id: 'h1', templateId: 'upper', name: 'Overkrop A', date: '2026-10-01', startedAt: 1790000000000, completedAt: 1790003000000, rest: { warmup: 60, work: 180 }, exercises: [
+    { id: 'e1', exerciseId: 'bench', name: 'Bænkpres', trackingType: 'weightReps', sets: [
+      { id: 'w1', type: 'warmup', done: true, values: { weightKg: 40, reps: 10 } },
+      { id: 's1', type: 'work', done: true, values: { weightKg: 60, reps: 8 } },
+      { id: 's2', type: 'work', done: true, values: { weightKg: 60, reps: 7 } },
+    ] },
+    { id: 'e2', exerciseId: 'pullup', name: 'Pull-ups', trackingType: 'bodyweightReps', skipped: true, sets: [{ id: 's1', type: 'work' }] },
+  ] },
+];
+export const STORED_ACTIVE_WORKOUT = [
+  { id: 'a1', templateId: 'upper', name: 'Overkrop A', date: '2026-10-04', startedAt: 1790100000000, rest: { warmup: 60, work: 180 }, currentIndex: 0,
+    timer: { endsAt: 1790100180000, seconds: 180, setKey: 'e1/s1' }, exercises: [
+      { id: 'e1', exerciseId: 'bench', name: 'Bænkpres', trackingType: 'weightReps', sets: [
+        { id: 's1', type: 'work', done: true, values: { weightKg: 62.5, reps: 8 } },
+        { id: 's2', type: 'work', draft: { weightKg: '65' } },
+      ] },
+    ] },
+];
 export const ROUTINES_TEST_SEED = [{ id: 'seed', name: 'demo', enabled: true, activeFrom: '2026-01-01', daysOfWeek: [1], steps: [] }];
 export const GOALS_TEST_SEED = [{ id: 900, title: 'demo goal', description: '', target: 1, progress: 0, category: 'Study', priority: 'low', deadline: '', completed: false }];
 

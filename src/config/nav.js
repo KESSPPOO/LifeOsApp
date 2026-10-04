@@ -3,11 +3,15 @@
 // The app's routes: the single source of truth for route names (`id`, used
 // as the React Navigation route name), Danish labels, icons, which routes
 // are bottom-bar tabs (`tab`) and which Mere group the others belong to
-// (`section`). See ADR-005 and ADR-007 in docs/ARCHITECTURE_DECISIONS.md.
+// (`section`), or which tab a screen belongs to (`parent`: reached from that
+// tab, which stays highlighted; not listed on Mere). See ADR-005, ADR-007
+// and ADR-010 in docs/ARCHITECTURE_DECISIONS.md.
 //
-// Bottom bar: I dag · Tidshjul · Plan · Mere. Træning and Mad become tabs
-// between Plan and Mere once those modules exist. Everything else is listed
-// on Mere (Kalender too, also linked from Plan; ADR-009).
+// Bottom bar: I dag · Tidshjul · Plan · Træning · Mere. Mad becomes a tab
+// between Træning and Mere once that module exists. Træning's own screens
+// (a workout, exercises, a template, history) have parent 'training'.
+// Everything else is listed on Mere (Kalender too, also linked from Plan;
+// ADR-009).
 //
 // Note: the Plan route keeps the id 'journal' (the Tasks screen's old
 // internal name). Route ids are not storage keys (those live in
@@ -19,7 +23,12 @@ export const NAV = [
   { id: 'today',     label: t('nav.today'),     icon: '☀️', tab: true },
   { id: 'timewheel', label: t('nav.timewheel'), icon: '🕒', tab: true },
   { id: 'journal',   label: t('nav.plan'),      icon: '📋', tab: true },
+  { id: 'training',  label: t('nav.training'),  icon: '🏋️', tab: true },
   { id: 'more',      label: t('nav.more'),      icon: '☰',  tab: true },
+  { id: 'workout',         label: t('nav.workout'),         icon: '🏋️', parent: 'training' },
+  { id: 'exercises',       label: t('nav.exercises'),       icon: '📖', parent: 'training' },
+  { id: 'workoutTemplate', label: t('nav.workoutTemplate'), icon: '📝', parent: 'training' },
+  { id: 'trainingHistory', label: t('nav.trainingHistory'), icon: '🗓', parent: 'training' },
   { id: 'routines',  label: t('nav.routines'),  icon: '🔁', section: 'life' },
   { id: 'calendar',  label: t('nav.calendar'),  icon: '📅', section: 'life' },
   { id: 'groceries', label: t('nav.groceries'), icon: '🛒', section: 'life' },
@@ -54,7 +63,8 @@ export const MORE_SECTIONS = [
   { id: 'legacy', title: t('more.legacy'), note: t('more.legacyNote') },
 ].map(s => ({ ...s, items: NAV.filter(n => n.section === s.id) }));
 
-/** The tab to highlight for a route: itself if it is a tab, otherwise Mere. */
+/** The tab to highlight for a route: itself if it is a tab, its parent tab, otherwise Mere. */
 export function tabFor(routeId) {
-  return TAB_ITEMS.some(n => n.id === routeId) ? routeId : MORE_ROUTE;
+  if (TAB_ITEMS.some(n => n.id === routeId)) return routeId;
+  return NAV.find(n => n.id === routeId)?.parent ?? MORE_ROUTE;
 }

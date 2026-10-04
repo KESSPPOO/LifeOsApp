@@ -10,7 +10,7 @@ import React from 'react';
 import { View, StatusBar, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../config/colors';
-import { NAV, MORE_ROUTE } from '../../config/nav';
+import { NAV, tabFor } from '../../config/nav';
 import { HeaderBar } from '../../components/HeaderBar';
 
 export function ShellLayout({ state, navigation, children }) {
@@ -20,10 +20,11 @@ export function ShellLayout({ state, navigation, children }) {
   const currentNav = NAV.find(n => n.id === current);
 
   // Same as Android Back; with no history (cannot normally happen on a
-  // secondary screen) go to Mere, where these screens are listed.
+  // secondary screen) go to the tab the screen belongs to (tabFor: its
+  // parent, or Mere, where the others are listed).
   const goBack = () => {
     if (navigation.canGoBack()) navigation.goBack();
-    else navigation.navigate(MORE_ROUTE);
+    else navigation.navigate(tabFor(current));
   };
 
   return (

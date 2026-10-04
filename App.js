@@ -13,6 +13,7 @@ import { hydrateGoals } from './src/features/goals/store';
 import { hydrateNotes } from './src/features/notes/store';
 import { hydrateLinks } from './src/features/links/store';
 import { hydrateRoutines } from './src/features/routines/store';
+import { hydrateTraining } from './src/features/training/store';
 import { ErrorBoundary } from './src/app/ErrorBoundary';
 import { AppNavigator } from './src/app/navigation/AppNavigator';
 import {
@@ -139,6 +140,7 @@ function AppContent() {
           hydrateNotes(),
           hydrateLinks(),
           hydrateRoutines(),
+          hydrateTraining(),
         ]);
         setIsFirstUse(data.isFirstUse);
         setUserName(data.userName);

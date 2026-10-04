@@ -239,7 +239,5 @@ export function moveStep(steps, index, delta) {
   return next;
 }
 
-/** A new unique id (time + random). Impure: used by screens, not by the logic above. */
-export function newId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
+/** A new unique id (time + random; src/core/id.js). Impure: used by screens, not by the logic above. */
+export { newId } from '../../core/id.js';

@@ -42,6 +42,12 @@ export const KEY_SPECS = Object.freeze({
   routines:           { type: 'array',   owner: 'features/routines', description: 'Routine templates: { id, name, enabled, activeFrom: YYYY-MM-DD, daysOfWeek: [1..7] (1 = Monday), startTime?: "HH:mm", durationMinutes?, steps: [{ id, text }] }. Occurrences are derived, never stored.' },
   routineLog:         { type: 'array',   owner: 'features/routines', description: 'Routine completion per date: { routineId, date: YYYY-MM-DD, completedStepIds: [] }. Kept when a routine is deleted.' },
 
+  // ── Training (features/training, ADR-010) ─────────────────────────────
+  exercises:          { type: 'array',   owner: 'features/training', description: 'Exercise library: { id, name, category, muscleGroups: [], equipment, trackingType ("weightReps" | "bodyweightReps" | "duration" | "distanceDuration"), instructions?, custom }. Empty by default.' },
+  workoutTemplates:   { type: 'array',   owner: 'features/training', description: 'Planned workouts: { id, name, rest: { warmup, work } (s), exercises: [{ id, exerciseId, sets: [{ id, type: "warmup" | "work", targetReps?, targetWeightKg? }] }] }. Never holds results.' },
+  activeWorkout:      { type: 'array',   owner: 'features/training', description: 'The workout in progress: a list of at most ONE session (see workoutSessions) with currentIndex, timer { endsAt (epoch ms), seconds, setKey } | null and per-set draft texts. Saved on every logged set.' },
+  workoutSessions:    { type: 'array',   owner: 'features/training', description: 'Completed workouts (history), each a snapshot: { id, templateId, name, date: YYYY-MM-DD, startedAt, completedAt (epoch ms), rest, exercises: [{ id, exerciseId, name, trackingType, skipped?, replacedFrom?, sets: [{ id, type, targets?, done?, values? }] }] }. Written once per finished workout.' },
+
   // ── Still owned by App.js (not migrated yet) ──────────────────────────
   isFirstUse:         { type: 'boolean', owner: 'App.js', description: 'true until onboarding completes.' },
   userName:           { type: 'string',  owner: 'App.js', description: 'Name from onboarding.' },

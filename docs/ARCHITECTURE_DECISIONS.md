@@ -553,3 +553,97 @@ drift from Plan and Tidshjul and need syncing.
   earlier days are on I dag and Plan, not on today's calendar page.
 - Blocks are at least 44 pt, so a very short item looks longer than it is;
   its start is still exact and its words say the real times.
+
+## ADR-010: Træning v1: exercises, templates, snapshotted sessions and a separate workout in progress
+
+- **Status:** accepted (Session 11, 2026-10-04)
+
+### Context
+Træning is the first high-volume LifeOS domain: every set in every workout
+is logged. The user logs standing in the gym, so the workout screen must be
+fast, survive leaving the app, and never lose a logged set. The plan names
+training as the trigger for SQLite, but SQLite is out of scope for v1, so
+the design has to keep AsyncStorage writes small.
+
+### Decision
+- **Four separate concepts, four lists** (`src/features/training/`), all on
+  `createPersistedListStore` (same failed-read, corrupt-backup and
+  ordered-save guarantees as every module; in the store safety matrix),
+  all empty by default (no demo exercises or plans):
+  - `exercises`: DEFINITIONS `{ id, name, category, muscleGroups, equipment,
+    trackingType, instructions?, custom }`. Tracking types `weightReps`,
+    `bodyweightReps`, `duration`, `distanceDuration` decide what a set
+    records. Categories are a plain field (strength … rehabilitation, other).
+  - `workoutTemplates`: PLANS `{ id, name, rest: { warmup, work },
+    exercises: [{ id, exerciseId, sets: [{ id, type: 'warmup' | 'work',
+    targetReps?, targetWeightKg? }] }] }`. Array order is the order. A
+    template refers to exercises by id and never holds results.
+  - `activeWorkout`: the workout IN PROGRESS, a list of at most one
+    session, saved on every logged set (small).
+  - `workoutSessions`: completed workouts (HISTORY), appended once per
+    finish. A set tap never rewrites the history list.
+- **A session is a snapshot.** Starting copies the template's exercises,
+  sets, targets and rest times, plus each exercise's **name and tracking
+  type** from the library. Editing or deleting the template, or renaming an
+  exercise, never changes a started or finished workout. Not copied:
+  muscles, equipment and instructions (Forklaring reads the library; they
+  describe the exercise, not the workout). `exerciseId` stays the identity
+  (Sidst, a future exercise history).
+- **Set logging:** a set holds `draft` (texts typed but not logged, kept
+  across screens and restarts; saved when a field is left, not per
+  keystroke), then `done` + `values` (numbers). The fields show the draft,
+  else the template target, else Sidst, so repeating last time is one tap.
+  Values are validated per tracking type; an invalid or missing value is
+  never logged. Danish input: `parseDecimalInput` ('62,5', at most two
+  decimals, no thousands separators, so '1.250' is refused, not read as
+  1,25). Undo reopens a set with its values back in the fields.
+- **Sidst:** the most recent completed workout that did the same exercise
+  (same exerciseId and tracking type, not skipped, at least one completed
+  set); the nth warm-up (work) set gets the nth completed warm-up (work)
+  set of that exercise then. No match: a dash.
+- **Rest timer:** a deadline in the workout in progress (`timer: {
+  endsAt, seconds, setKey }`, epoch ms), started when a set is completed,
+  using the session's rest time for the set's type (template-configurable;
+  defaults 1:30 warm-up, 3:00 work). Screens derive the countdown from the
+  clock (`useRestClock`: one interval while a deadline is ahead, none
+  otherwise), so navigation and restarts never create a second timer and
+  nothing drifts. +30 sek and Spring pause over change the deadline. In-app
+  only: no notifications, nothing alerts while the app is closed (the
+  screen says so).
+- **Spring over / Alternativ** change the session only. Alternativ (before
+  a set of that exercise is logged) swaps exerciseId, name and tracking
+  type, keeps the planned sets and records `replacedFrom`. A skipped
+  exercise counts as skipped, never also as done; its already logged sets
+  still count as sets.
+- **Never two workouts in progress, never a lost one** (`workouts.js`):
+  start returns the workout in progress if there is one; finish writes
+  history FIRST and clears the workout in progress only after that save
+  succeeded (an unreadable history at boot or a failed write keeps it in
+  progress); `pickActive` ignores a copy already in history (an interrupted
+  finish). Kassér drops it without touching history.
+- **Navigation:** Træning is a primary tab: **I dag · Tidshjul · Plan ·
+  Træning · Mere** (the slot ADR-005 reserved; Mad comes later). Its own
+  screens (`workout`, `exercises`, `workoutTemplate`, `trainingHistory`)
+  are flat routes with `parent: 'training'` in `src/config/nav.js`: they
+  highlight Træning, are not listed on Mere, and Back with no history goes
+  to Træning. Still one flat navigator (no nested stacks).
+- **No cross-domain side effects:** Træning creates no tasks, calendar
+  items or Tidshjul blocks and imports none of those domains (a test
+  checks it). Linking a workout to a planned task is a later, explicit
+  scheduling decision.
+- Times: `date` is the local 'YYYY-MM-DD' the workout started;
+  `startedAt` / `completedAt` / `timer.endsAt` are epoch milliseconds
+  (a log of real moments, unlike planning's local 'HH:mm').
+- One default workout view; a future Simpel / Avanceret is another view
+  over the same session functions, not a second set of rules.
+
+### Known v1 limitations
+- History is one AsyncStorage list, rewritten on each finish (not on each
+  set). Fine for years of a few workouts a week; the SQLite move (plan § 3)
+  must come before multi-year, high-frequency logging grows it past a few
+  MB.
+- Exercises cannot be deleted yet (templates and history refer to them);
+  no built-in library, images or videos.
+- Targets are one value for all work sets of an exercise in the editor
+  (the model allows a target per set); duration and distance exercises
+  have no targets.

@@ -1,7 +1,7 @@
 // src/app/navigation/BottomNav.js
 //
 // The bottom bar (the tab navigator's custom tabBar): the tabs in
-// src/config/nav.js (I dag · Tidshjul · Plan · Mere, ADR-007). The current tab is
+// src/config/nav.js (I dag · Tidshjul · Plan · Træning · Mere, ADR-007/010). The current tab is
 // highlighted (Mere while a screen listed on Mere is open) and its icon
 // "pops" when the tab changes.
 import React, { useEffect, useRef } from 'react';
