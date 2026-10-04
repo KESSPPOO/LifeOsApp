@@ -44,6 +44,19 @@ export function endTime(task) {
 }
 
 /**
+ * The task's schedule in minutes from midnight of `date` (any date): start
+ * and end shift by whole days, so a task from the day before that runs past
+ * midnight starts below 0 and one running into the next day ends above
+ * 1440. null for an untimed task.
+ */
+export function scheduleOn(task, date) {
+  const schedule = getSchedule(task);
+  if (!schedule) return null;
+  const offset = daysBetween(date, task.date) * MINUTES_PER_DAY;
+  return { start: schedule.start + offset, end: schedule.end === null ? null : schedule.end + offset };
+}
+
+/**
  * Where a task is in time at `now` = (today: 'YYYY-MM-DD', nowMinutes:
  * minutes since today's midnight):
  *   'untimed'  no valid time
@@ -54,11 +67,10 @@ export function endTime(task) {
  *              time has come (no interval is invented)
  */
 export function scheduleStatus(task, today, nowMinutes) {
-  const schedule = getSchedule(task);
+  const schedule = scheduleOn(task, today);
   if (!schedule) return 'untimed';
-  const dayOffset = daysBetween(today, task.date) * MINUTES_PER_DAY;
-  if (nowMinutes < dayOffset + schedule.start) return 'upcoming';
-  if (schedule.end !== null && nowMinutes < dayOffset + schedule.end) return 'active';
+  if (nowMinutes < schedule.start) return 'upcoming';
+  if (schedule.end !== null && nowMinutes < schedule.end) return 'active';
   return 'past';
 }
 

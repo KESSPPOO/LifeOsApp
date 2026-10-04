@@ -9,7 +9,7 @@
 // kind 'task' | 'habit'; entry is a stored entry (edit) or a draft without
 // an id (new); options.onSaved runs after a save; options.focus 'time'
 // starts in the time field (the "Flyt" action).
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { CustomAlert } from '../../components/CustomAlert';
 import { t } from '../../core/i18n';
 import { useSetJournal } from '../tasks/store';
@@ -25,11 +25,11 @@ export function useEntryEditor({ today, sync }) {
   const [alertConfig, setAlertConfig] = useState(null);
   const closeAlert = () => setAlertConfig(null);
 
-  const openEditor = (kind, entry, { onSaved, focus } = {}) => {
+  const openEditor = useCallback((kind, entry, { onSaved, focus } = {}) => {
     sync(); // the sheet's "I dag" / "I morgen" use the current day
     sheetKey.current += 1;
     setSheet({ key: sheetKey.current, kind, id: entry.id ?? null, initial: formFromEntry(entry), onSaved, focus });
-  };
+  }, [sync]);
 
   const save = (fields) => {
     const { kind, id, onSaved } = sheet;

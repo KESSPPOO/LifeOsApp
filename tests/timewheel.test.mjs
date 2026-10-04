@@ -4,9 +4,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildDay, dayItems, timelineRows, ringPoint, arcPath, blockHeight, timeRange,
+  buildDay, timelineRows, ringPoint, arcPath, blockHeight, timeRange, itemDetails,
   describeTimelineItem, MAX_LANES,
 } from '../src/features/timewheel/logic.js';
+import { taskItem } from '../src/features/tasks/items.js';
 import { findOverlaps } from '../src/features/tasks/schedule.js';
 import { buildToday } from '../src/features/today/logic.js';
 import { timeToMinutes } from '../src/core/time/timeOfDay.js';
@@ -40,8 +41,8 @@ test('only timed tasks on the selected date become items, in time order', () => 
 test('items carry start/end minutes, open/finished state and status at now', () => {
   const [item] = day([timed(1, '10:45', 60)], { nowMinutes: at('11:00') }).items;
   assert.deepEqual(
-    [item.start, item.end, item.point, item.done, item.status, item.timeLabel, item.endTime],
-    [645, 705, false, false, 'active', '10:45 · 1 time', '11:45'],
+    [item.start, item.end, item.done, item.status, item.timeLabel, item.endTime],
+    [645, 705, false, 'active', '10:45 · 1 time', '11:45'],
   );
   const [finished] = day([timed(1, '10:45', 60, { done: true })]).items;
   assert.equal(finished.done, true);
@@ -50,7 +51,8 @@ test('items carry start/end minutes, open/finished state and status at now', () 
 test('a task without a duration is a point: no end, no invented interval', () => {
   const d = day([timed(1, '14:00'), timed(2, '13:30', 60)], { nowMinutes: at('14:10') });
   const point = d.items.find(i => i.id === 1);
-  assert.deepEqual([point.point, point.end, point.endTime, point.durationMinutes], [true, null, null, null]);
+  assert.deepEqual([point.end, point.endTime, point.durationMinutes], [null, null, null]);
+  assert.deepEqual(itemDetails(point), ['Uden varighed']);
   assert.equal(point.status, 'past'); // never 'active'
   assert.deepEqual(point.overlapsWith, []); // a point never overlaps
   assert.equal(timeRange(point).end, '');
@@ -62,11 +64,13 @@ test('a task from yesterday running past midnight shows from 00:00 of today', ()
   const d = day([night, notOver], { nowMinutes: at('00:15') });
   assert.deepEqual(ids(d.items), [1]);
   const [item] = d.items;
-  assert.deepEqual([item.start, item.end, item.fromPreviousDay, item.status], [-30, 30, true, 'active']);
+  assert.deepEqual([item.start, item.end, item.status], [-30, 30, 'active']);
   assert.deepEqual(timeRange(item), { start: '23:30', end: '00:30' });
+  assert.deepEqual(itemDetails(item), ['1 time', 'fortsat fra i går', 'i gang']);
   // ... and on its own day it is marked as running into tomorrow.
   const own = buildDay({ journal: [night], date: '2026-10-02', today: TODAY, nowMinutes: 0 }).items[0];
-  assert.deepEqual([own.start, own.end, own.untilNextDay], [1410, 1470, true]);
+  assert.deepEqual([own.start, own.end], [1410, 1470]);
+  assert.deepEqual(itemDetails(own), ['1 time', 'slutter i morgen', 'i gang']);
 });
 
 test('the day model does not modify the stored tasks', () => {
@@ -86,7 +90,7 @@ test('states: empty, only flexible, scheduled, all done', () => {
   assert.equal(day([task(1)]).state, 'onlyFlexible');
   assert.equal(day([task(1), timed(2, '10:00', 30)]).state, 'scheduled');
   const done = day([timed(1, '10:00', 30, { done: true }), timed(2, '14:00', null, { done: true })]);
-  assert.deepEqual([done.state, done.done, done.total], ['allDone', 2, 2]);
+  assert.deepEqual([done.state, done.done, done.items.length], ['allDone', 2, 2]);
   assert.equal(done.items.length, 2); // finished items stay, subdued
 });
 
@@ -116,7 +120,7 @@ test('another day has no live "now": future shows the first planned, past a summ
   assert.equal(future.nowMinute, null);
   assert.equal(future.focus.first.id, 2);
   const past = buildDay({ journal: [timed(1, '09:00', 30, { date: '2026-10-01', done: true })], date: '2026-10-01', today: TODAY, nowMinutes: at('12:00') });
-  assert.deepEqual([past.relation, past.focus, past.nowMinute, past.done, past.total], ['past', null, null, 1, 1]);
+  assert.deepEqual([past.relation, past.focus, past.nowMinute, past.done, past.items.length], ['past', null, null, 1, 1]);
   assert.ok(!timelineRows(past).some(r => r.type === 'now'));
 });
 
@@ -166,7 +170,7 @@ test('timeline: items, free time between them, and the NU marker in place', () =
 
 test('timeline: touching items have no gap; NU after everything at the end of the day', () => {
   const d = day([timed(1, '08:00', 60), timed(2, '09:00', 60)], { nowMinutes: at('22:00') });
-  assert.deepEqual(timelineRows(d).map(r => r.type === 'item' ? r.item.id : r.type), [1, 2, 'now']);
+  assert.deepEqual(timelineRows(d).map(r => r.type === 'item' ? r.item.id : r.type), [1, 2, 'gap', 'now']);
 });
 
 test('timeline: an active item comes before the NU marker', () => {
@@ -230,6 +234,9 @@ test('day conflicts across midnight: yesterday\'s late task against an early one
   assert.deepEqual(d.conflicts.map(group => ids(group)), [[1, 2]]);
 });
 
-test('dayItems is the one place timed items are chosen (also used for the conflict check)', () => {
-  assert.deepEqual(ids(dayItems([timed(1, '10:00', 30), task(2)], TODAY, TODAY, 0)), [1]);
+test('items share the I dag/Plan item shape, so all screens describe a task the same way', () => {
+  const stored = timed(1, '10:45', 60);
+  const [item] = day([stored], { nowMinutes: at('11:00') }).items;
+  const { task: _task, start: _start, end: _end, lane: _lane, overlapsWith: _overlaps, ...shared } = item;
+  assert.deepEqual(shared, taskItem(stored, TODAY, at('11:00')));
 });

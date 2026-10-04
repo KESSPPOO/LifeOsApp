@@ -9,7 +9,7 @@
 // foreground, and is re-read on every tap, so a timed task becomes NU when
 // its time comes and a screen left open overnight never shows, or writes
 // to, yesterday.
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
@@ -19,7 +19,7 @@ import { t, formatDateLong } from '../../../core/i18n';
 import { localDateKey, isoWeekNumber } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
-import { useJournal, useToggleEntry } from '../../tasks/store';
+import { useJournal, useTickedThisVisit } from '../../tasks/store';
 import { useGoals } from '../../goals/store';
 import { useGroceries } from '../../groceries/store';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
@@ -39,23 +39,17 @@ export default function TodayScreen({ userName }) {
   const groceries = useGroceries();
 
   const [now, sync] = useNow();
-  const toggleEntry = useToggleEntry(sync);
   const today = localDateKey(now);
   const nowMinutes = minutesOfDay(now);
   // Tasks ticked during this visit stay visible (dimmed), so a tap can be
-  // undone (same rule as Plan).
-  const [keepVisibleIds, setKeepVisibleIds] = useState(() => new Set());
+  // undone (same rule as Plan and Tidshjul).
+  const [keepVisibleIds, tick] = useTickedThisVisit(sync);
   const day = useMemo(
     () => buildToday({ journal, goals, groceries, today, nowMinutes, keepVisibleIds }),
     [journal, goals, groceries, today, nowMinutes, keepVisibleIds],
   );
 
-  const toggle = (item) => {
-    if (item.kind === 'task') {
-      setKeepVisibleIds(prev => (prev.has(item.id) ? prev : new Set(prev).add(item.id)));
-    }
-    toggleEntry(item.id);
-  };
+  const toggle = (item) => tick(item.id);
 
   const greeting = t(greetingKey(now.getHours()));
 

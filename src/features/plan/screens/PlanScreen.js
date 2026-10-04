@@ -19,7 +19,7 @@
 // - Drag-to-reorder (DraggableList) for the lists whose order is the
 //   user's: today's untimed tasks, undated tasks and habits. Those rows
 //   have a fixed height, which DraggableList needs.
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
@@ -32,7 +32,7 @@ import { t, formatDateLong, formatRelativeDay, formatDuration } from '../../../c
 import { localDateKey, addDays } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
-import { useJournal, useSetJournal, useToggleEntry } from '../../tasks/store';
+import { useJournal, useSetJournal, useTickedThisVisit } from '../../tasks/store';
 import { taskItem, describeItem } from '../../tasks/items';
 import { groupPlan, addTask, reorderSection } from '../logic';
 import { useEntryEditor } from '../useEntryEditor';
@@ -45,21 +45,15 @@ export default function PlanScreen() {
   const journal = useJournal();
   const setJournal = useSetJournal();
   const [now, sync] = useNow();
-  const toggleEntry = useToggleEntry(sync);
   const today = localDateKey(now);
   const nowMinutes = minutesOfDay(now);
 
-  const [toggledIds, setToggledIds] = useState(() => new Set());
+  const [toggledIds, toggle] = useTickedThisVisit(sync);
   const plan = useMemo(() => groupPlan(journal, today, toggledIds), [journal, today, toggledIds]);
 
   const { openEditor, showAlert, closeAlert, editorElements } = useEntryEditor({ today, sync });
 
   // ── Actions ─────────────────────────────────────────────────────────────
-  const toggle = (id) => {
-    setToggledIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
-    toggleEntry(id);
-  };
-
   // Today at the moment of an action (also moves the screen to a new day).
   const currentDay = () => localDateKey(sync());
 

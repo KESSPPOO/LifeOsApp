@@ -10,14 +10,14 @@
 // says "Uden varighed". Every row says in words what the bar and colour
 // show (time, length, i gang, klaret, overlap), and tapping it opens the
 // task in the shared editor.
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../../config/colors';
 import { t, formatDuration } from '../../../core/i18n';
 import { minutesToTime } from '../../../core/time/timeOfDay';
-import { blockHeight, timeRange, overlapText, describeTimelineItem } from '../logic';
+import { blockHeight, timeRange, itemDetails, overlapText, describeTimelineItem } from '../logic';
 
-export function Timeline({ day, rows, onOpen }) {
+export const Timeline = memo(function Timeline({ day, rows, onOpen }) {
   return (
     <View>
       {rows.map((row, index) => {
@@ -42,18 +42,13 @@ export function Timeline({ day, rows, onOpen }) {
       })}
     </View>
   );
-}
+});
 
 function TimelineItem({ item, day, onOpen }) {
   const { start, end } = timeRange(item);
-  const conflict = !item.done && item.overlapsWith.length > 0;
+  const conflict = item.overlapsWith.length > 0; // only open items overlap
   const active = !item.done && item.status === 'active';
-  const details = [
-    item.point ? t('timewheel.point') : formatDuration(item.durationMinutes),
-    item.fromPreviousDay ? t('timewheel.fromYesterday') : null,
-    item.untilNextDay ? t('timewheel.untilTomorrow') : null,
-    active ? t('timewheel.active') : null,
-  ].filter(Boolean).join(' · ');
+  const point = item.end === null;
 
   return (
     <TouchableOpacity
@@ -68,7 +63,7 @@ function TimelineItem({ item, day, onOpen }) {
         {end ? <Text style={styles.endText}>{end}</Text> : null}
       </View>
       <View style={styles.rail}>
-        {item.point ? (
+        {point ? (
           <View style={[styles.pointDot, item.done && styles.pointDone]} />
         ) : (
           <View style={[styles.bar, conflict && styles.barConflict, item.done && styles.barDone]} />
@@ -76,9 +71,8 @@ function TimelineItem({ item, day, onOpen }) {
       </View>
       <View style={styles.body}>
         <Text style={[styles.title, item.done && styles.doneText]}>{item.title}</Text>
-        <Text style={styles.meta}>{details}</Text>
+        <Text style={styles.meta}>{item.done ? '✓ ' : ''}{itemDetails(item).join(' · ')}</Text>
         {conflict ? <Text style={styles.conflictText}>⚠ {overlapText(item, day)}</Text> : null}
-        {item.done ? <Text style={styles.meta}>✓ {t('timewheel.done')}</Text> : null}
       </View>
     </TouchableOpacity>
   );

@@ -4,6 +4,7 @@
 // storage, plus the hooks screens use. Persistence and data safety come from
 // the shared createPersistedListStore (src/core/state); the task/habit
 // domain logic lives in src/data/tasks.js.
+import { useCallback, useState } from 'react';
 import { useStore } from 'zustand';
 import { appStorage, KEYS } from '../../core/storage';
 import { createPersistedListStore } from '../../core/state/persistedListStore';
@@ -32,8 +33,24 @@ export const hydrateJournal = () => journalStore.getState().hydrate();
  */
 export function useToggleEntry(sync) {
   const setJournal = useSetJournal();
-  return (id) => {
+  return useCallback((id) => {
     const today = localDateKey(sync());
     setJournal(prev => toggleJournalEntry(prev, id, today));
-  };
+  }, [setJournal, sync]);
+}
+
+/**
+ * useToggleEntry plus the set of entries ticked during this visit, which
+ * the screen passes to groupJournal as keepVisibleIds: a task ticked off
+ * stays visible (dimmed) so the tap can be undone. Not persisted; it
+ * resets when the screen is left. Returns [keepVisibleIds, toggle(id)].
+ */
+export function useTickedThisVisit(sync) {
+  const toggleEntry = useToggleEntry(sync);
+  const [ids, setIds] = useState(() => new Set());
+  const toggle = useCallback((id) => {
+    setIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
+    toggleEntry(id);
+  }, [toggleEntry]);
+  return [ids, toggle];
 }

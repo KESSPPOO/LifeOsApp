@@ -64,14 +64,15 @@ src/
                        Reads tasks, goals, groceries stores
   features/timewheel/  Tidshjul (route `timewheel`, ADR-007): logic.js (one date's timed
                        items, lanes, overlaps, timeline rows, ring geometry; pure),
-                       screens/TimewheelScreen.js, components/DayRing.js (SVG), Timeline.js.
+                       screens/TimewheelScreen.js, components/DayRing.js (SVG), Timeline.js,
+                       ConflictPanel.js.
                        A view over the tasks store; persists nothing
   features/plan/       Plan (route `journal`): logic.js (grouping, list operations, task
                        form validation, pure), screens/PlanScreen.js, components/TaskSheet.js,
                        Composer.js, Choice.js; useEntryEditor.js (THE task/habit editor,
                        also used by Timewheel)
   features/tasks/      store.js: tasks + habits singleton + useJournal / useSetJournal /
-                       useToggleEntry (ticks on the real current day);
+                       useToggleEntry (ticks on the real current day) / useTickedThisVisit;
                        schedule.js: optional startTime/durationMinutes (ADR-006), status,
                        ordering, findOverlaps; focus.js: selectFocus = THE NU/NÆSTE rule
                        (I dag + Timewheel); items.js: the task/habit item + Danish

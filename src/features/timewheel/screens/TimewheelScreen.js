@@ -10,7 +10,7 @@
 // nothing of its own. Tapping an item, or "Åbn" / "Flyt" on an overlap,
 // opens the same task sheet as Plan (useEntryEditor). Nothing is ever moved
 // automatically.
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../../config/colors';
@@ -20,13 +20,14 @@ import { t, formatDateLong, formatRelativeDay } from '../../../core/i18n';
 import { localDateKey, addDays, daysBetween, isoWeekNumber } from '../../../core/time/dates';
 import { minutesOfDay } from '../../../core/time/timeOfDay';
 import { useNow } from '../../../core/time/useNow';
-import { useJournal, useToggleEntry } from '../../tasks/store';
+import { useJournal, useTickedThisVisit } from '../../tasks/store';
 import { describeItem } from '../../tasks/items';
 import { FocusLabel, ItemRow } from '../../tasks/components/ItemRow';
 import { useEntryEditor } from '../../plan/useEntryEditor';
-import { buildDay, timelineRows, timeRange } from '../logic';
+import { buildDay, timelineRows } from '../logic';
 import { DayRing } from '../components/DayRing';
 import { Timeline } from '../components/Timeline';
+import { ConflictPanel } from '../components/ConflictPanel';
 
 const FLEXIBLE_SHOWN = 3;
 
@@ -36,7 +37,6 @@ export default function TimewheelScreen() {
   const [now, sync] = useNow();
   const today = localDateKey(now);
   const nowMinutes = minutesOfDay(now);
-  const toggleEntry = useToggleEntry(sync);
   const { openEditor, editorElements } = useEntryEditor({ today, sync });
 
   // null = follow today (also across midnight); a date once the user steps.
@@ -48,24 +48,19 @@ export default function TimewheelScreen() {
   };
 
   // Tasks ticked here stay visible in NU/NÆSTE's source list (as on I dag).
-  const [keepVisibleIds, setKeepVisibleIds] = useState(() => new Set());
+  const [keepVisibleIds, tick] = useTickedThisVisit(sync);
   const day = useMemo(
     () => buildDay({ journal, date, today, nowMinutes, keepVisibleIds }),
     [journal, date, today, nowMinutes, keepVisibleIds],
   );
   const rows = useMemo(() => timelineRows(day), [day]);
-  const [showConflicts, setShowConflicts] = useState(false);
 
-  const toggle = (item) => {
-    if (item.kind === 'task') setKeepVisibleIds(prev => (prev.has(item.id) ? prev : new Set(prev).add(item.id)));
-    toggleEntry(item.id);
-  };
-  const open = (item) => openEditor('task', item.task);
+  const toggle = (item) => tick(item.id);
+  // Stable, so the memoised timeline does not re-render for unrelated state.
+  const open = useCallback((item) => openEditor('task', item.task), [openEditor]);
   const move = (item) => openEditor('task', item.task, { focus: 'time' });
 
-  const relative = daysBetween(today, date);
-  const relativeLabel = Math.abs(relative) <= 1 ? capitalize(formatRelativeDay(date, today)) : null;
-  const conflictCount = day.conflicts.reduce((sum, group) => sum + group.length, 0);
+  const relativeLabel = Math.abs(daysBetween(today, date)) <= 1 ? capitalize(formatRelativeDay(date, today)) : null;
 
   return (
     <View style={styles.root}>
@@ -78,7 +73,7 @@ export default function TimewheelScreen() {
           <View style={styles.dayTitle}>
             <Text style={styles.date} accessibilityRole="header">{formatDateLong(date)}</Text>
             <Text style={styles.subline}>
-              {[relativeLabel, t('timewheel.week', { week: isoWeekNumber(date) })].filter(Boolean).join(' · ')}
+              {[relativeLabel, t('today.week', { week: isoWeekNumber(date) })].filter(Boolean).join(' · ')}
             </Text>
           </View>
           <TouchableOpacity onPress={() => step(1)} style={styles.stepBtn} accessibilityRole="button" accessibilityLabel={t('timewheel.nextDay')}>
@@ -124,8 +119,8 @@ export default function TimewheelScreen() {
             />
           </>
         ) : null}
-        {day.relation === 'past' && day.total > 0 ? (
-          <Text style={styles.quiet}>{t('timewheel.pastSummary', { done: day.done, total: day.total })}</Text>
+        {day.relation === 'past' && day.items.length > 0 ? (
+          <Text style={styles.quiet}>{t('timewheel.pastSummary', { done: day.done, total: day.items.length })}</Text>
         ) : null}
 
         {/* ── 2. The 24-hour overview ── */}
@@ -134,53 +129,7 @@ export default function TimewheelScreen() {
         </View>
 
         {/* ── Overlaps: shown, never resolved automatically ── */}
-        {day.conflicts.length > 0 ? (
-          <View style={styles.conflict} accessibilityRole="summary">
-            <Text style={styles.conflictTitle}>⚠ {t('timewheel.conflicts', { count: conflictCount })}</Text>
-            <Text style={styles.conflictHint}>{t('timewheel.conflictsHint')}</Text>
-            <TouchableOpacity
-              onPress={() => setShowConflicts(v => !v)}
-              style={styles.conflictToggle}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: showConflicts }}
-            >
-              <Text style={styles.conflictToggleText}>
-                {t(showConflicts ? 'timewheel.hideConflicts' : 'timewheel.showConflicts')}
-              </Text>
-            </TouchableOpacity>
-            {showConflicts ? day.conflicts.map(group => (
-              <View key={group.map(item => item.id).join('-')} style={styles.conflictGroup}>
-                {group.map(item => {
-                  const { start, end } = timeRange(item);
-                  return (
-                    <View key={item.id} style={styles.conflictItem}>
-                      <View style={styles.conflictInfo}>
-                        <Text style={styles.conflictItemTitle}>{item.title}</Text>
-                        <Text style={styles.conflictItemTime}>{start}–{end}</Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => open(item)}
-                        style={styles.actionBtn}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('timewheel.openLabel', { title: item.title })}
-                      >
-                        <Text style={styles.actionText}>{t('timewheel.open')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => move(item)}
-                        style={styles.actionBtn}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('timewheel.moveLabel', { title: item.title })}
-                      >
-                        <Text style={styles.actionText}>{t('timewheel.move')}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </View>
-            )) : null}
-          </View>
-        ) : null}
+        {day.conflicts.length > 0 ? <ConflictPanel conflicts={day.conflicts} onOpen={open} onMove={move} /> : null}
 
         {/* ── 3. The timeline ── */}
         <Text style={styles.sectionTitle} accessibilityRole="header">{t('timewheel.timeline')}</Text>
@@ -240,25 +189,6 @@ const styles = StyleSheet.create({
   quiet: { fontSize: 15, lineHeight: 22, color: COLORS.textMuted, marginBottom: 16 },
 
   ring: { marginTop: 4, marginBottom: 20 },
-
-  conflict: {
-    borderLeftWidth: 4, borderLeftColor: COLORS.amber, backgroundColor: COLORS.bgElevated,
-    borderRadius: 12, padding: 14, marginBottom: 24,
-  },
-  conflictTitle:      { fontSize: 16, fontWeight: '700', color: COLORS.text },
-  conflictHint:       { fontSize: 14, color: COLORS.textMuted, marginTop: 4 },
-  conflictToggle:     { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  conflictToggleText: { fontSize: 15, fontWeight: '600', color: COLORS.text, textDecorationLine: 'underline' },
-  conflictGroup:      { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border, paddingTop: 4, marginTop: 4 },
-  conflictItem:       { flexDirection: 'row', alignItems: 'center', minHeight: 52 },
-  conflictInfo:       { flex: 1 },
-  conflictItemTitle:  { fontSize: 15, color: COLORS.text },
-  conflictItemTime:   { fontSize: 13, color: COLORS.textMuted, marginTop: 2, fontVariant: ['tabular-nums'] },
-  actionBtn: {
-    minHeight: 44, minWidth: 56, justifyContent: 'center', alignItems: 'center',
-    paddingHorizontal: 12, marginLeft: 6, borderRadius: 22, borderWidth: 1, borderColor: COLORS.border2,
-  },
-  actionText: { fontSize: 15, fontWeight: '600', color: COLORS.text },
 
   sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
 

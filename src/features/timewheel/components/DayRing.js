@@ -12,7 +12,7 @@
 //     a hand points at the current time
 // It is supplemental: screen readers get a one-line summary here, and every
 // item with its details in the timeline below.
-import React from 'react';
+import React, { memo } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Path, Line, Text as SvgText } from 'react-native-svg';
 import { COLORS } from '../../../config/colors';
@@ -27,12 +27,11 @@ const LANE_GAP = 13;
 const STROKE = 9;
 const HOURS = [0, 6, 12, 18];
 
-export function DayRing({ day }) {
+export const DayRing = memo(function DayRing({ day }) {
   const now = day.nowMinute;
   const lanes = Math.max(1, ...day.items.map(item => item.lane + 1));
   const innermost = OUTER - (lanes - 1) * LANE_GAP;
   const labelRadius = innermost - 26;
-  const conflictIds = new Set(day.conflicts.flat().map(item => item.id));
 
   const summary = [
     t('timewheel.a11y.ring', { count: day.items.length }),
@@ -74,10 +73,10 @@ export function DayRing({ day }) {
         })}
 
         {/* Tasks with a duration: arcs on their lane */}
-        {day.items.filter(item => !item.point).map(item => {
+        {day.items.filter(item => item.end !== null).map(item => {
           const d = arcPath(item.start, item.end, OUTER - item.lane * LANE_GAP, CENTER);
           if (!d) return null;
-          const stroke = item.done ? COLORS.textMuted : conflictIds.has(item.id) ? COLORS.amber : COLORS.accent;
+          const stroke = item.done ? COLORS.textMuted : item.overlapsWith.length ? COLORS.amber : COLORS.accent;
           return (
             <Path
               key={`arc-${item.id}`}
@@ -92,7 +91,7 @@ export function DayRing({ day }) {
         })}
 
         {/* Tasks without a duration: points on the outer ring */}
-        {day.items.filter(item => item.point).map(item => {
+        {day.items.filter(item => item.end === null).map(item => {
           const p = ringPoint(item.start, OUTER, CENTER);
           return (
             <Circle
@@ -125,4 +124,4 @@ export function DayRing({ day }) {
       </Svg>
     </View>
   );
-}
+});
